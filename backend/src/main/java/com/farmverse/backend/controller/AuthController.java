@@ -1,5 +1,6 @@
 package com.farmverse.backend.controller;
 
+import com.farmverse.backend.dto.LoginRequest;
 import com.farmverse.backend.dto.RegisterRequest;
 import com.farmverse.backend.service.AuthService;
 import org.springframework.http.ResponseEntity;
@@ -8,8 +9,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController // Marks this as a REST API controller
-@RequestMapping("/api/auth") // Base URL for all endpoints in this class
+@RestController
+@RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
@@ -18,14 +19,24 @@ public class AuthController {
         this.authService = authService;
     }
 
-    // Endpoint: POST http://localhost:8080/api/auth/register
     @PostMapping("/register")
     public ResponseEntity<String> registerFarmer(@RequestBody RegisterRequest request) {
         try {
             String response = authService.registerFarmer(request);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            // If email is already in use, return a 400 Bad Request
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // NEW: The Login Endpoint
+    @PostMapping("/login")
+    public ResponseEntity<String> loginFarmer(@RequestBody LoginRequest request) {
+        try {
+            String response = authService.loginFarmer(request);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            // Returns 400 Bad Request if credentials are invalid
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
