@@ -21,13 +21,15 @@ public class AuthService {
     private final FarmerRepository farmerRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService; // NEW: Added JwtService
 
-    // Added AuthenticationManager to the constructor
-    public AuthService(UserRepository userRepository, FarmerRepository farmerRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager) {
+    // Updated Constructor
+    public AuthService(UserRepository userRepository, FarmerRepository farmerRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager, JwtService jwtService) {
         this.userRepository = userRepository;
         this.farmerRepository = farmerRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
+        this.jwtService = jwtService;
     }
 
     public String registerFarmer(RegisterRequest request) {
@@ -57,20 +59,20 @@ public class AuthService {
         return "Farmer registered successfully!";
     }
 
-    // NEW: The Login Method
     public String loginFarmer(LoginRequest request) {
         try {
-            // 1. Create an authentication token with the email and password
             UsernamePasswordAuthenticationToken authToken = 
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword());
             
-            // 2. Ask Spring Security to authenticate it (this triggers the CustomUserDetailsService and BCrypt check)
             Authentication authentication = authenticationManager.authenticate(authToken);
-            
-            // 3. Set the authenticated user in the Spring Security context
             SecurityContextHolder.getContext().setAuthentication(authentication);
             
-            return "Login successful for user: " + request.getEmail();
+            // NEW: Generate the JWT token using our JwtService
+            String jwtToken = jwtService.generateToken(request.getEmail());
+            
+            // Return the token instead of a success message
+            return jwtToken;
+            
         } catch (Exception e) {
             throw new RuntimeException("Invalid email or password");
         }
