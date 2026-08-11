@@ -1,0 +1,40 @@
+.currentWeather {
+  background: linear-gradient(135deg, var(--color-forest) 0%, #0a3322 100%);
+  border-radius: var(--border-radius-xl);
+  padding: 32px;
+  margin-bottom: 24px;
+  color: #fff;
+}
+.currentMain { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+.location { font-size: 14px; color: rgba(255,255,255,0.6); margin-bottom: 12px; }
+.tempRow { display: flex; align-items: center; gap: 20px; }
+.temp { font-size: 72px; font-weight: 800; font-family: var(--font-display); line-height: 1; }
+.condition { font-size: 20px; font-weight: 600; }
+.weatherIcon { font-size: 80px; line-height: 1; }
+
+.currentMetrics { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+@media (max-width: 900px) { .currentMetrics { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 500px)  { .currentMetrics { grid-template-columns: repeat(2, 1fr); } }
+
+.metricItem { background: rgba(255,255,255,0.08); border-radius: 12px; padding: 14px 10px; text-align: center; }
+.metricIcon { font-size: 20px; display: block; margin-bottom: 4px; color: var(--color-gold); }
+.metricLabel { display: block; font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+.metricValue { font-size: 14px; font-weight: 700; }
+
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+.forecastList { display: flex; flex-direction: column; gap: 8px; }
+.forecastDay { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--border-light); }
+.forecastDay:last-child { border-bottom: none; }
+.forecastDayName { width: 36px; font-weight: 700; font-size: 14px; color: var(--text-primary); }
+.forecastIcon { font-size: 22px; }
+.forecastTemp { flex: 1; font-size: 14px; color: var(--text-secondary); }
+.rainBar { flex: 1; height: 5px; background: var(--bg-tertiary); border-radius: 99px; overflow: hidden; }
+.rainFill { height: 100%; background: #3B82F6; border-radius: 99px; }
+.rainPct { font-size: 12px; color: var(--color-info); font-weight: 600; width: 36px; text-align: right; }
+
+.advisoryGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+@media (max-width: 640px) { .advisoryGrid { grid-template-columns: 1fr; } }
+
+.advisoryItem { padding: 14px 16px; background: var(--bg-secondary); border-radius: var(--border-radius); border-left: 4px solid; }

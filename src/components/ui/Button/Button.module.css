@@ -1,0 +1,95 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: var(--font-semibold);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn:not(:disabled):active { transform: scale(0.97); }
+
+/* Sizes */
+.sm  { padding: 6px 14px;  font-size: var(--text-sm);  }
+.md  { padding: 10px 20px; font-size: var(--text-base); }
+.lg  { padding: 14px 28px; font-size: var(--text-lg);  }
+.xl  { padding: 16px 36px; font-size: var(--text-xl); letter-spacing: 0.02em; }
+.icon { padding: 10px; border-radius: var(--border-radius-full); }
+
+/* Variants */
+.primary {
+  background: linear-gradient(135deg, var(--color-emerald) 0%, var(--color-forest) 100%);
+  color: #fff;
+  box-shadow: var(--shadow-green);
+}
+.primary:not(:disabled):hover {
+  background: linear-gradient(135deg, #0d5234 0%, #153829 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(15,94,58,0.35);
+}
+
+.gold {
+  background: linear-gradient(135deg, var(--color-gold) 0%, #b8941f 100%);
+  color: #1a1a1a;
+  font-weight: var(--font-bold);
+  box-shadow: var(--shadow-gold);
+}
+.gold:not(:disabled):hover {
+  background: linear-gradient(135deg, #e0bc40 0%, #c9a420 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(212,175,55,0.4);
+}
+
+.outline {
+  background: transparent;
+  border: 2px solid var(--color-emerald);
+  color: var(--color-emerald);
+}
+.outline:not(:disabled):hover {
+  background: var(--color-emerald);
+  color: #fff;
+}
+
+.outlineGold {
+  background: transparent;
+  border: 1.5px solid var(--color-gold);
+  color: var(--color-gold);
+}
+.outlineGold:not(:disabled):hover {
+  background: var(--color-gold);
+  color: #1a1a1a;
+}
+
+.ghost {
+  background: transparent;
+  color: var(--text-primary);
+}
+.ghost:not(:disabled):hover {
+  background: var(--bg-tertiary);
+}
+
+.danger {
+  background: var(--color-error);
+  color: #fff;
+}
+.danger:not(:disabled):hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* Loading spinner */
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

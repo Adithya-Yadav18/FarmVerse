@@ -1,0 +1,80 @@
+.farmsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+@media (max-width: 1100px) { .farmsGrid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px)  { .farmsGrid { grid-template-columns: 1fr; } }
+
+.farmCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
+  box-shadow: var(--shadow-sm);
+}
+.farmCard:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+.farmCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.farmIcon {
+  width: 44px; height: 44px;
+  background: var(--color-pale-green);
+  border-radius: var(--border-radius);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-emerald);
+}
+
+.farmName {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  margin: 0;
+}
+
+.farmLoc {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.farmMeta {
+  display: flex;
+  gap: 16px;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.farmMeta span::before { content: '• '; color: var(--text-muted); margin-right: 4px; }
+.farmMeta span:first-child::before { content: ''; }
+
+.farmCrops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 26px;
+}
+.cropTag {
+  padding: 3px 10px;
+  background: var(--color-pale-green);
+  color: var(--color-emerald);
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.farmActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
