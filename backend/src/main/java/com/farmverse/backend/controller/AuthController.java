@@ -26,6 +26,7 @@ public class AuthController {
             AuthResponse response = authService.registerFarmer(request);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
+            e.printStackTrace();
             return ResponseEntity.badRequest().body(null);
         }
     }

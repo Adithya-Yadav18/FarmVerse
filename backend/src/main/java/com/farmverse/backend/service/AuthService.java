@@ -40,27 +40,40 @@ public class AuthService {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole("ROLE_FARMER");
+        
+        // Use the role from frontend, or default to FARMER
+        if (request.getRole() != null) {
+            user.setRole("ROLE_" + request.getRole().toUpperCase());
+        } else {
+            user.setRole("ROLE_FARMER");
+        }
         user.setCreatedAt(LocalDateTime.now());
         
         User savedUser = userRepository.save(user);
 
         Farmer farmer = new Farmer();
         farmer.setUser(savedUser);
-        farmer.setFullName(request.getFullName());
+        farmer.setFullName(request.getName());
         farmer.setPhoneNumber(request.getPhoneNumber());
         farmer.setRegion(request.getRegion());
         farmer.setFarmingExperienceYears(request.getFarmingExperienceYears());
         farmer.setPreferredLanguage(request.getPreferredLanguage());
         farmer.setCreatedAt(LocalDateTime.now());
 
-        farmerRepository.save(farmer);
+        Farmer savedFarmer = farmerRepository.save(farmer);
 
         // Generate a token for the newly registered user
         String jwtToken = jwtService.generateToken(savedUser.getEmail());
         
         AuthResponse response = new AuthResponse();
-        response.setAccessToken(jwtToken);
+        response.getTokens().setAccessToken(jwtToken);
+
+        // Populate the user details so the frontend doesn't crash!
+        response.getUser().setId(savedUser.getId());
+        response.getUser().setName(savedFarmer.getFullName());
+        response.getUser().setEmail(savedUser.getEmail());
+        response.getUser().setRole(savedUser.getRole());
+
         return response;
     }
 
@@ -72,10 +85,20 @@ public class AuthService {
             Authentication authentication = authenticationManager.authenticate(authToken);
             SecurityContextHolder.getContext().setAuthentication(authentication);
             
-            String jwtToken = jwtService.generateToken(request.getEmail());
+            // Fetch the user from the database to get their details
+            User loggedInUser = userRepository.findByEmail(request.getEmail())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            
+            String jwtToken = jwtService.generateToken(loggedInUser.getEmail());
             
             AuthResponse response = new AuthResponse();
-            response.setAccessToken(jwtToken);
+            response.getTokens().setAccessToken(jwtToken);
+
+            response.getUser().setId(loggedInUser.getId());
+            response.getUser().setName(loggedInUser.getEmail()); // Temporary: Using email as name for login until we link Farmer profile
+            response.getUser().setEmail(loggedInUser.getEmail());
+            response.getUser().setRole(loggedInUser.getRole());
+            
             return response;
             
         } catch (Exception e) {
