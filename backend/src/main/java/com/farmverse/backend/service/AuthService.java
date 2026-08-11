@@ -1,5 +1,6 @@
 package com.farmverse.backend.service;
 
+import com.farmverse.backend.dto.AuthResponse;
 import com.farmverse.backend.dto.LoginRequest;
 import com.farmverse.backend.dto.RegisterRequest;
 import com.farmverse.backend.entity.Farmer;
@@ -21,9 +22,8 @@ public class AuthService {
     private final FarmerRepository farmerRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final JwtService jwtService; // NEW: Added JwtService
+    private final JwtService jwtService;
 
-    // Updated Constructor
     public AuthService(UserRepository userRepository, FarmerRepository farmerRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager, JwtService jwtService) {
         this.userRepository = userRepository;
         this.farmerRepository = farmerRepository;
@@ -32,7 +32,7 @@ public class AuthService {
         this.jwtService = jwtService;
     }
 
-    public String registerFarmer(RegisterRequest request) {
+    public AuthResponse registerFarmer(RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("Error: Email is already in use!");
         }
@@ -56,10 +56,15 @@ public class AuthService {
 
         farmerRepository.save(farmer);
 
-        return "Farmer registered successfully!";
+        // Generate a token for the newly registered user
+        String jwtToken = jwtService.generateToken(savedUser.getEmail());
+        
+        AuthResponse response = new AuthResponse();
+        response.setAccessToken(jwtToken);
+        return response;
     }
 
-    public String loginFarmer(LoginRequest request) {
+    public AuthResponse loginFarmer(LoginRequest request) {
         try {
             UsernamePasswordAuthenticationToken authToken = 
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword());
@@ -67,11 +72,11 @@ public class AuthService {
             Authentication authentication = authenticationManager.authenticate(authToken);
             SecurityContextHolder.getContext().setAuthentication(authentication);
             
-            // NEW: Generate the JWT token using our JwtService
             String jwtToken = jwtService.generateToken(request.getEmail());
             
-            // Return the token instead of a success message
-            return jwtToken;
+            AuthResponse response = new AuthResponse();
+            response.setAccessToken(jwtToken);
+            return response;
             
         } catch (Exception e) {
             throw new RuntimeException("Invalid email or password");

@@ -1,5 +1,6 @@
 package com.farmverse.backend.controller;
 
+import com.farmverse.backend.dto.AuthResponse;
 import com.farmverse.backend.dto.LoginRequest;
 import com.farmverse.backend.dto.RegisterRequest;
 import com.farmverse.backend.service.AuthService;
@@ -20,24 +21,22 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> registerFarmer(@RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthResponse> registerFarmer(@RequestBody RegisterRequest request) {
         try {
-            String response = authService.registerFarmer(request);
+            AuthResponse response = authService.registerFarmer(request);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(null);
         }
     }
 
-    // NEW: The Login Endpoint
     @PostMapping("/login")
-    public ResponseEntity<String> loginFarmer(@RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> loginFarmer(@RequestBody LoginRequest request) {
         try {
-            String response = authService.loginFarmer(request);
+            AuthResponse response = authService.loginFarmer(request);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            // Returns 400 Bad Request if credentials are invalid
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(null);
         }
     }
 }
