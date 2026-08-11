@@ -1,3 +1,6 @@
+# Ignore frontend folder on backend branch
+/frontend/
+
 # Backend specific
 backend/target/
 backend/.mvn/
