@@ -1,0 +1,13 @@
+.layout { display: grid; grid-template-columns: 340px 1fr; gap: 24px; }
+@media (max-width: 1024px) { .layout { grid-template-columns: 1fr; } }
+
+.recCard {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 18px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+.recCard:hover { border-color: var(--color-gold); box-shadow: var(--shadow-sm); }
+.recCardActive { border-color: var(--color-gold); background: rgba(212,175,55,0.05); box-shadow: var(--shadow-gold); }

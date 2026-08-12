@@ -1,0 +1,378 @@
+/* ─── Shared Footer ──────────────────────────────────────────────────────── */
+.footer {
+  margin-top: auto;
+}
+
+.footerPublic {
+  background: linear-gradient(180deg, #080f0b 0%, #0a1610 50%, #060c08 100%);
+  border-top: 1px solid rgba(212, 175, 55, 0.12);
+  padding: 56px 24px 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.footerPublic::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, 90%);
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(212, 175, 55, 0.55),
+    transparent
+  );
+}
+
+.footerDashboard {
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  padding: 32px 24px 20px;
+}
+
+.inner {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(4, 1fr);
+  gap: 40px;
+  margin-bottom: 36px;
+}
+
+.gridDashboard {
+  grid-template-columns: 1.2fr repeat(4, 1fr);
+  gap: 32px;
+  margin-bottom: 24px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.logoRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.logoIcon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--color-gold) 0%, #b8941f 100%);
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.35);
+  flex-shrink: 0;
+}
+
+.logoText {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.logoTextPublic {
+  color: #fff;
+}
+
+.logoTextDashboard {
+  color: var(--text-primary);
+}
+
+.tagline {
+  font-size: 0.875rem;
+  line-height: 1.65;
+  max-width: 280px;
+}
+
+.taglinePublic {
+  color: rgba(255, 255, 255, 0.52);
+}
+
+.taglineDashboard {
+  color: var(--text-muted);
+}
+
+.brandMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.versionBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.versionBadgePublic {
+  background: rgba(212, 175, 55, 0.12);
+  color: var(--color-gold);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+}
+
+.versionBadgeDashboard {
+  background: var(--color-pale-green);
+  color: var(--color-emerald);
+  border: 1px solid rgba(15, 94, 58, 0.15);
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.columnHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.columnTitle {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.columnTitlePublic {
+  color: var(--color-gold);
+}
+
+.columnTitleDashboard {
+  color: var(--color-emerald);
+}
+
+.linkList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: color 0.2s ease, transform 0.2s ease;
+  width: fit-content;
+  min-height: 36px;
+  padding: 2px 0;
+}
+
+.linkPublic {
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.linkPublic:hover {
+  color: #fff;
+  transform: translateX(3px);
+}
+
+.linkDashboard {
+  color: var(--text-muted);
+}
+
+.linkDashboard:hover {
+  color: var(--color-emerald);
+  transform: translateX(3px);
+}
+
+.linkDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.link:hover .linkDot {
+  opacity: 1;
+}
+
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 24px;
+}
+
+.bottomPublic {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bottomDashboard {
+  border-top: 1px solid var(--border-color);
+}
+
+.copyright {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.copyrightPublic {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.copyrightDashboard {
+  color: var(--text-muted);
+}
+
+.copyright strong {
+  color: var(--color-gold);
+  font-weight: 600;
+}
+
+.copyrightDashboard strong {
+  color: var(--color-emerald);
+}
+
+.bottomNote {
+  font-size: 0.75rem;
+}
+
+.bottomNotePublic {
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.bottomNoteDashboard {
+  color: var(--text-muted);
+}
+
+@media (max-width: 1024px) {
+  .grid,
+  .gridDashboard {
+    grid-template-columns: 1fr 1fr;
+    gap: 28px 20px;
+  }
+
+  .brand {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .footerPublic {
+    padding: 40px 20px 24px;
+  }
+
+  .footerDashboard {
+    padding: 28px 16px 18px;
+  }
+
+  .grid,
+  .gridDashboard {
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin-bottom: 20px;
+  }
+
+  .brand {
+    text-align: center;
+    align-items: center;
+    padding-bottom: 24px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .footerDashboard .brand {
+    border-bottom-color: var(--border-color);
+  }
+
+  .logoRow {
+    justify-content: center;
+  }
+
+  .tagline {
+    max-width: 100%;
+    text-align: center;
+    font-size: 0.8125rem;
+  }
+
+  .brandMeta {
+    justify-content: center;
+  }
+
+  .column {
+    padding: 18px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .footerDashboard .column {
+    border-bottom-color: var(--border-color);
+  }
+
+  .column:last-of-type {
+    border-bottom: none;
+    padding-bottom: 8px;
+  }
+
+  .columnHeader {
+    margin-bottom: 4px;
+  }
+
+  .linkList {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 12px;
+  }
+
+  .link {
+    width: 100%;
+    font-size: 0.8125rem;
+    min-height: 40px;
+    padding: 6px 0;
+  }
+
+  .bottom {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    padding-top: 20px;
+  }
+
+  .copyright {
+    font-size: 0.75rem;
+    max-width: 320px;
+  }
+
+  .bottomNote {
+    font-size: 0.6875rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .linkList {
+    grid-template-columns: 1fr;
+  }
+}
