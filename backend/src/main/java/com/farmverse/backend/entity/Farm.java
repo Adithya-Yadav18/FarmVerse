@@ -7,12 +7,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 @Entity
@@ -27,25 +29,36 @@ public class Farm {
     @JoinColumn(name = "farmer_id", nullable = false)
     private Farmer farmer;
 
-    @JsonProperty("name") // Send as "name" to frontend
+    @JsonProperty("name")
     private String farmName;
     
     private String location;
     
-    @JsonProperty("area") // Send as "area" to frontend
+    @JsonProperty("area")
     private Double totalAreaAcres;
     
     private String soilType;
     
-    private String status = "Active"; // NEW: Default status
+    private String status = "Active";
     
     @JsonProperty("areaUnit")
-    private String areaUnit = "hectares"; // NEW: Default unit
+    private String areaUnit = "hectares";
 
-    // Frontend expects an array of crops, so we send an empty list for now until Module 4 is built
+    // NEW: Link to the Crop table (One Farm has Many Crops)
+    @OneToMany(mappedBy = "farm", fetch = jakarta.persistence.FetchType.EAGER)
+    private List<Crop> cropEntities = new ArrayList<>();
+
+    // NEW: Convert the Crop objects into a simple list of Strings for the frontend
     @Transient
     @JsonProperty("crops")
-    private List<String> crops = new ArrayList<>();
+    public List<String> getCropNames() {
+        if (cropEntities != null && !cropEntities.isEmpty()) {
+            return cropEntities.stream()
+                               .map(Crop::getCropName)
+                               .collect(Collectors.toList());
+        }
+        return new ArrayList<>();
+    }
     
     private LocalDateTime createdAt;
 }
