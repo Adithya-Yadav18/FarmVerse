@@ -69,16 +69,13 @@ public class AuthService {
         AuthResponse response = new AuthResponse();
         response.getTokens().setAccessToken(jwtToken);
 
-        // Populate the user details so the frontend doesn't crash!
-        response.getUser().setId(savedUser.getId());
-        response.getUser().setName(savedFarmer.getFullName());
-        response.getUser().setEmail(savedUser.getEmail());
-        response.getUser().setRole(savedUser.getRole());
+        // UPDATED: Use the helper method to send ALL fields!
+        populateUserResponse(response.getUser(), savedUser, savedFarmer);
 
         return response;
     }
 
-        public AuthResponse loginFarmer(LoginRequest request) {
+    public AuthResponse loginFarmer(LoginRequest request) {
         try {
             UsernamePasswordAuthenticationToken authToken = 
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword());
@@ -99,11 +96,8 @@ public class AuthService {
             AuthResponse response = new AuthResponse();
             response.getTokens().setAccessToken(jwtToken);
 
-            // Set the actual name, not the email!
-            response.getUser().setId(loggedInUser.getId());
-            response.getUser().setName(loggedInFarmer.getFullName());
-            response.getUser().setEmail(loggedInUser.getEmail());
-            response.getUser().setRole(loggedInUser.getRole());
+            // UPDATED: Use the helper method to send ALL fields!
+            populateUserResponse(response.getUser(), loggedInUser, loggedInFarmer);
             
             return response;
             
@@ -112,50 +106,56 @@ public class AuthService {
         }
     }
 
-        // Method to get the user's profile
-    public AuthResponse getProfile(String userEmail) {
+    // Method to get the user's profile
+    public AuthResponse.UserResponse getProfile(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         Farmer farmer = farmerRepository.findByUser(user)
                 .orElseThrow(() -> new RuntimeException("Farmer profile not found"));
 
-        AuthResponse response = new AuthResponse();
-        // We don't need to generate new tokens just to view the profile, 
-        // but we can leave them empty or null since the frontend only reads the "user" object here.
-        populateUserResponse(response, user, farmer);
-        return response;
+        AuthResponse.UserResponse userResp = new AuthResponse.UserResponse();
+        populateUserResponse(userResp, user, farmer);
+        return userResp;
     }
 
     // Method to update the user's profile
-    public AuthResponse updateProfile(String userEmail, ProfileUpdateRequest request) {
+    public AuthResponse.UserResponse updateProfile(String userEmail, ProfileUpdateRequest request) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         Farmer farmer = farmerRepository.findByUser(user)
                 .orElseThrow(() -> new RuntimeException("Farmer profile not found"));
 
-        // Update only the provided fields
-        if (request.getFullName() != null) farmer.setFullName(request.getFullName());
-        if (request.getPhoneNumber() != null) farmer.setPhoneNumber(request.getPhoneNumber());
-        if (request.getRegion() != null) farmer.setRegion(request.getRegion());
-        if (request.getFarmingExperienceYears() != null) farmer.setFarmingExperienceYears(request.getFarmingExperienceYears());
-        if (request.getPreferredLanguage() != null) farmer.setPreferredLanguage(request.getPreferredLanguage());
-
+        // Update Farmer details
+        if (request.getName() != null) farmer.setFullName(request.getName());
+        if (request.getPhone() != null) farmer.setPhoneNumber(request.getPhone());
+        if (request.getLocation() != null) farmer.setRegion(request.getLocation());
         farmerRepository.save(farmer);
 
-        AuthResponse response = new AuthResponse();
-        populateUserResponse(response, user, farmer);
-        return response;
-    }
+        // Update User email safely
+        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
+            // 1. Check if the new email is already taken by someone else
+            if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+                throw new RuntimeException("Error: This email is already in use by another account!");
+            }
+            // 2. Update the email
+            user.setEmail(request.getEmail());
+            userRepository.save(user);
+        }
 
+        AuthResponse.UserResponse userResp = new AuthResponse.UserResponse();
+        populateUserResponse(userResp, user, farmer);
+        return userResp;
+    }
+    
     // 🧠 Senior Engineer Tip: Helper method to avoid repeating the same mapping code!
-    private void populateUserResponse(AuthResponse response, User user, Farmer farmer) {
-        response.getUser().setId(user.getId());
-        response.getUser().setName(farmer.getFullName());
-        response.getUser().setEmail(user.getEmail());
-        response.getUser().setRole(user.getRole());
-        response.getUser().setPhoneNumber(farmer.getPhoneNumber());
-        response.getUser().setRegion(farmer.getRegion());
-        response.getUser().setFarmingExperienceYears(farmer.getFarmingExperienceYears());
-        response.getUser().setPreferredLanguage(farmer.getPreferredLanguage());
+    private void populateUserResponse(AuthResponse.UserResponse response, User user, Farmer farmer) {
+        response.setId(user.getId());
+        response.setName(farmer.getFullName());
+        response.setEmail(user.getEmail());
+        response.setRole(user.getRole());
+        response.setPhoneNumber(farmer.getPhoneNumber());
+        response.setRegion(farmer.getRegion());
+        response.setFarmingExperienceYears(farmer.getFarmingExperienceYears());
+        response.setPreferredLanguage(farmer.getPreferredLanguage());
     }
 }

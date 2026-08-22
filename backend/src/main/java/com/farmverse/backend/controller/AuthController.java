@@ -2,6 +2,7 @@ package com.farmverse.backend.controller;
 
 import com.farmverse.backend.dto.AuthResponse;
 import com.farmverse.backend.dto.LoginRequest;
+import com.farmverse.backend.dto.ProfileResponse;
 import com.farmverse.backend.dto.ProfileUpdateRequest;
 import com.farmverse.backend.dto.RegisterRequest;
 import com.farmverse.backend.service.AuthService;
@@ -47,23 +48,23 @@ public class AuthController {
         }
     }
 
-        // GET /api/auth/me - View Profile
+    // GET /api/auth/me - View Profile
     @GetMapping("/me")
-    public ResponseEntity<AuthResponse> getMyProfile() {
+    public ResponseEntity<ProfileResponse> getMyProfile() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userEmail = authentication.getName();
         
-        AuthResponse response = authService.getProfile(userEmail);
-        return ResponseEntity.ok(response);
+        AuthResponse.UserResponse userData = authService.getProfile(userEmail);
+        return ResponseEntity.ok(new ProfileResponse(userData));
     }
-
+    
     // PUT /api/auth/profile - Update Profile
     @PutMapping("/profile")
-    public ResponseEntity<AuthResponse> updateMyProfile(@RequestBody ProfileUpdateRequest request) {
+    public ResponseEntity<ProfileResponse> updateMyProfile(@RequestBody ProfileUpdateRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userEmail = authentication.getName();
         
-        AuthResponse response = authService.updateProfile(userEmail, request);
-        return ResponseEntity.ok(response);
+        AuthResponse.UserResponse userData = authService.updateProfile(userEmail, request);
+        return ResponseEntity.ok(new ProfileResponse(userData));
     }
 }

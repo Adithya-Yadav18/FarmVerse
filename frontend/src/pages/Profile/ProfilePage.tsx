@@ -11,6 +11,7 @@ import { Card } from '../../components/ui/Card/Card';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { useAuth } from '../../context/AuthContext';
 import { initials } from '../../utils';
+import { authService } from '../../services/authService';
 
 const schema = z.object({
   name: z.string().min(2),
@@ -29,11 +30,32 @@ export default function ProfilePage() {
     defaultValues: { name: user?.name ?? '', email: user?.email ?? '', phone: user?.phone ?? '', location: user?.location ?? '' },
   });
 
-  const onSubmit = async (data: FormData) => {
-    await new Promise(r => setTimeout(r, 600));
-    updateUser(data);
-    toast.success('Profile updated successfully');
-    setEditing(false);
+    const onSubmit = async (data: FormData) => {
+    try {
+      // 1. Call API. It returns the updated User object.
+      const updatedUser = await authService.updateProfile({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        location: data.location,
+      });
+      
+      // 2. Update local state with the new data from the backend
+      updateUser({ 
+        ...user, 
+        name: updatedUser.name, 
+        email: updatedUser.email,
+        phone: updatedUser.phone, 
+        location: updatedUser.location 
+      });
+      
+      toast.success('Profile updated successfully. If you changed your email, please log out and log back in with the new email.');
+      setEditing(false);
+    } catch (error: any) {
+      // Show the exact error from the backend if possible
+      toast.error(error.response?.data?.message || 'Failed to update profile. Please try again.');
+      console.error("Update profile error:", error);
+    }
   };
 
   return (

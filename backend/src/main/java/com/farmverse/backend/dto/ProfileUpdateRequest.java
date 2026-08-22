@@ -4,9 +4,8 @@ import lombok.Data;
 
 @Data
 public class ProfileUpdateRequest {
-    private String fullName;
-    private String phoneNumber;
-    private String region;
-    private Integer farmingExperienceYears;
-    private String preferredLanguage;
+    private String name;
+    private String email; // NEW: Added email field
+    private String phone;
+    private String location;
 }

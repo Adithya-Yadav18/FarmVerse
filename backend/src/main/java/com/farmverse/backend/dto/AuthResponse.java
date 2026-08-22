@@ -1,5 +1,6 @@
 package com.farmverse.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
@@ -21,9 +22,14 @@ public class AuthResponse {
         private String email;
         private String role;
         
-        // NEW: Added profile fields!
+        // NEW: @JsonProperty tells Spring Boot to use "phone" in the JSON, not "phoneNumber"
+        @JsonProperty("phone")
         private String phoneNumber;
+        
+        // NEW: @JsonProperty tells Spring Boot to use "location" in the JSON, not "region"
+        @JsonProperty("location")
         private String region;
+        
         private Integer farmingExperienceYears;
         private String preferredLanguage;
     }
