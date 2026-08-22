@@ -77,7 +77,7 @@ public class AuthService {
         return response;
     }
 
-    public AuthResponse loginFarmer(LoginRequest request) {
+        public AuthResponse loginFarmer(LoginRequest request) {
         try {
             UsernamePasswordAuthenticationToken authToken = 
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword());
@@ -85,17 +85,22 @@ public class AuthService {
             Authentication authentication = authenticationManager.authenticate(authToken);
             SecurityContextHolder.getContext().setAuthentication(authentication);
             
-            // Fetch the user from the database to get their details
+            // Fetch the user from the database
             User loggedInUser = userRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new RuntimeException("User not found"));
+            
+            // Fetch the Farmer profile to get the real name!
+            Farmer loggedInFarmer = farmerRepository.findByUser(loggedInUser)
+                    .orElseThrow(() -> new RuntimeException("Farmer profile not found"));
             
             String jwtToken = jwtService.generateToken(loggedInUser.getEmail());
             
             AuthResponse response = new AuthResponse();
             response.getTokens().setAccessToken(jwtToken);
 
+            // Set the actual name, not the email!
             response.getUser().setId(loggedInUser.getId());
-            response.getUser().setName(loggedInUser.getEmail()); // Temporary: Using email as name for login until we link Farmer profile
+            response.getUser().setName(loggedInFarmer.getFullName());
             response.getUser().setEmail(loggedInUser.getEmail());
             response.getUser().setRole(loggedInUser.getRole());
             

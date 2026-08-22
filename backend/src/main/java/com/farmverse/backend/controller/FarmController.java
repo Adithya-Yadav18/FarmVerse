@@ -43,4 +43,18 @@ public class FarmController {
         List<Farm> farms = farmService.getFarmsByFarmer(userEmail);
         return ResponseEntity.ok(farms);
     }
+
+        // PUT /api/farms/{id} - Update an existing farm
+    @PutMapping("/{id}")
+    public ResponseEntity<Farm> updateFarm(@PathVariable Long id, @RequestBody FarmRequest request) {
+        Farm updatedFarm = farmService.updateFarm(id, request);
+        return ResponseEntity.ok(updatedFarm);
+    }
+
+    // DELETE /api/farms/{id} - Delete a farm
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteFarm(@PathVariable Long id) {
+        farmService.deleteFarm(id);
+        return ResponseEntity.ok("Farm deleted successfully");
+    }
 }

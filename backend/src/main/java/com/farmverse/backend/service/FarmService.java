@@ -56,4 +56,25 @@ public class FarmService {
 
         return farmRepository.findByFarmerId(farmer.getId());
     }
+
+        // Method to update a farm
+    public Farm updateFarm(Long farmId, FarmRequest request) {
+        Farm farm = farmRepository.findById(farmId)
+                .orElseThrow(() -> new RuntimeException("Farm not found with id: " + farmId));
+
+        // Update only the provided fields
+        if (request.getFarmName() != null) farm.setFarmName(request.getFarmName());
+        if (request.getLocation() != null) farm.setLocation(request.getLocation());
+        if (request.getTotalAreaAcres() != null) farm.setTotalAreaAcres(request.getTotalAreaAcres());
+        if (request.getSoilType() != null) farm.setSoilType(request.getSoilType());
+
+        return farmRepository.save(farm);
+    }
+
+    // Method to delete a farm
+    public void deleteFarm(Long farmId) {
+        Farm farm = farmRepository.findById(farmId)
+                .orElseThrow(() -> new RuntimeException("Farm not found with id: " + farmId));
+        farmRepository.delete(farm);
+    }
 }
