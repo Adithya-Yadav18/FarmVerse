@@ -7,6 +7,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Data;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 // @Data is a Lombok annotation that automatically generates getters, setters, and constructors
 @Data
@@ -23,6 +24,7 @@ public class User {
     private Long id;
 
     private String email;
+    @JsonIgnore
     private String password;
     private String role; // e.g., "ROLE_FARMER"
     
