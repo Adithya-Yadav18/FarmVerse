@@ -4,8 +4,9 @@ import lombok.Data;
 
 @Data
 public class FarmRequest {
-    private String farmName;
+    private String name; // Frontend sends "name"
     private String location;
-    private Double totalAreaAcres;
+    private Double area; // Frontend sends "area"
     private String soilType;
+    private String status;
 }

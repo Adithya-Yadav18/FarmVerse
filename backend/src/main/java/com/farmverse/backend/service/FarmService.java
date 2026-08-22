@@ -26,24 +26,20 @@ public class FarmService {
 
     // Method to add a farm
     public Farm addFarm(String userEmail, FarmRequest request) {
-        // 1. Find the User by email (we will pass the email from the JWT in the controller)
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        // 2. Find the Farmer profile linked to this User
         Farmer farmer = farmerRepository.findByUser(user)
                 .orElseThrow(() -> new RuntimeException("Farmer profile not found"));
 
-        // 3. Create the new Farm and link it to the Farmer
         Farm farm = new Farm();
         farm.setFarmer(farmer);
-        farm.setFarmName(request.getFarmName());
+        farm.setFarmName(request.getName());
         farm.setLocation(request.getLocation());
-        farm.setTotalAreaAcres(request.getTotalAreaAcres());
+        farm.setTotalAreaAcres(request.getArea());
         farm.setSoilType(request.getSoilType());
+        farm.setStatus(request.getStatus() != null ? request.getStatus() : "Active");
         farm.setCreatedAt(LocalDateTime.now());
 
-        // 4. Save to database
         return farmRepository.save(farm);
     }
 
@@ -58,15 +54,15 @@ public class FarmService {
     }
 
         // Method to update a farm
-    public Farm updateFarm(Long farmId, FarmRequest request) {
+        public Farm updateFarm(Long farmId, FarmRequest request) {
         Farm farm = farmRepository.findById(farmId)
                 .orElseThrow(() -> new RuntimeException("Farm not found with id: " + farmId));
 
-        // Update only the provided fields
-        if (request.getFarmName() != null) farm.setFarmName(request.getFarmName());
+        if (request.getName() != null) farm.setFarmName(request.getName());
         if (request.getLocation() != null) farm.setLocation(request.getLocation());
-        if (request.getTotalAreaAcres() != null) farm.setTotalAreaAcres(request.getTotalAreaAcres());
+        if (request.getArea() != null) farm.setTotalAreaAcres(request.getArea());
         if (request.getSoilType() != null) farm.setSoilType(request.getSoilType());
+        if (request.getStatus() != null) farm.setStatus(request.getStatus());
 
         return farmRepository.save(farm);
     }

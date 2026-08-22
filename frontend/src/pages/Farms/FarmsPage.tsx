@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { MdAdd, MdLocationOn, MdAgriculture } from 'react-icons/md';
+import { MdAdd, MdLocationOn, MdAgriculture, MdEdit } from 'react-icons/md';
 import { PageHeader } from '../../components/ui/PageHeader/PageHeader';
 import { Button } from '../../components/ui/Button/Button';
 import { SearchFilter } from '../../components/ui/SearchFilter/SearchFilter';
@@ -15,58 +15,98 @@ import { usePagination } from '../../hooks/usePagination';
 import { useDebounce } from '../../hooks/useDebounce';
 import type { Farm } from '../../types';
 import styles from './FarmsPage.module.css';
-
-const MOCK_FARMS: Farm[] = [
-  { id: '1', name: 'North Valley Farm', location: 'Punjab, India', area: 45, areaUnit: 'hectares', soilType: 'Alluvial', status: 'Active', ownerId: '1', crops: ['Wheat', 'Rice'], createdAt: '2024-01-10T00:00:00Z', updatedAt: '2024-06-01T00:00:00Z' },
-  { id: '2', name: 'Riverside Estate', location: 'Haryana, India', area: 32, areaUnit: 'hectares', soilType: 'Sandy Loam', status: 'Active', ownerId: '1', crops: ['Corn', 'Soybean'], createdAt: '2024-02-05T00:00:00Z', updatedAt: '2024-06-10T00:00:00Z' },
-  { id: '3', name: 'Golden Fields', location: 'UP, India', area: 60, areaUnit: 'hectares', soilType: 'Clay', status: 'Inactive', ownerId: '1', crops: ['Cotton'], createdAt: '2024-03-12T00:00:00Z', updatedAt: '2024-05-22T00:00:00Z' },
-  { id: '4', name: 'Green Acres', location: 'MP, India', area: 28, areaUnit: 'hectares', soilType: 'Red Soil', status: 'Harvested', ownerId: '1', crops: ['Sugarcane'], createdAt: '2024-01-20T00:00:00Z', updatedAt: '2024-06-15T00:00:00Z' },
-  { id: '5', name: 'Sunflower Ranch', location: 'Rajasthan, India', area: 52, areaUnit: 'hectares', soilType: 'Desert Sandy', status: 'Active', ownerId: '1', crops: ['Sunflower', 'Groundnut'], createdAt: '2024-04-01T00:00:00Z', updatedAt: '2024-06-18T00:00:00Z' },
-];
+import api from '../../services/api';
 
 export default function FarmsPage() {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newFarmName, setNewFarmName] = useState('');
-  const [newFarmLoc, setNewFarmLoc] = useState('');
+  const [newFarm, setNewFarm] = useState<{ name: string; location: string; area: string; soilType: string; status: Farm['status'] }>({ name: '', location: '', area: '', soilType: '', status: 'Active' });
+  
+  const [editFarm, setEditFarm] = useState<Farm | null>(null);
+
   const debouncedSearch = useDebounce(search, 300);
 
   useEffect(() => {
-    setTimeout(() => { setFarms(MOCK_FARMS); setLoading(false); }, 700);
+    const fetchFarms = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/farms');
+        // Filter out any completely null objects just in case
+        setFarms(response.data.filter((f: Farm) => f !== null));
+      } catch (error) {
+        toast.error('Failed to load farms from database');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFarms();
   }, []);
 
   const filtered = farms.filter(f => {
-    const matchSearch = f.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      f.location.toLowerCase().includes(debouncedSearch.toLowerCase());
-    const matchStatus = !statusFilter || f.status === statusFilter;
+    // Bulletproof null checks
+    const farmName = f.name ? String(f.name).toLowerCase() : "";
+    const farmLoc = f.location ? String(f.location).toLowerCase() : "";
+    const farmStatus = f.status ? String(f.status) : "";
+    
+    const matchSearch = farmName.includes(debouncedSearch.toLowerCase()) ||
+                        farmLoc.includes(debouncedSearch.toLowerCase());
+                        
+    const matchStatus = !statusFilter || farmStatus === statusFilter;
     return matchSearch && matchStatus;
   });
 
   const { page, totalPages, goToPage, canPrev, canNext, pageNumbers, limit } = usePagination({ total: filtered.length, pageSize: 6 });
   const paged = filtered.slice((page - 1) * limit, page * limit);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteId) return;
-    setFarms(prev => prev.filter(f => f.id !== deleteId));
-    toast.success('Farm deleted successfully');
-    setDeleteId(null);
+    try {
+      await api.delete(`/farms/${deleteId}`);
+      setFarms(prev => prev.filter(f => String(f.id) !== deleteId));
+      toast.success('Farm deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete farm');
+    } finally {
+      setDeleteId(null);
+    }
   };
 
-  const handleAdd = () => {
-    if (!newFarmName.trim()) { toast.error('Farm name is required'); return; }
-    const newFarm: Farm = {
-      id: String(Date.now()), name: newFarmName, location: newFarmLoc,
-      area: 0, areaUnit: 'hectares', soilType: 'Unknown', status: 'Active',
-      ownerId: '1', crops: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    setFarms(prev => [newFarm, ...prev]);
-    toast.success('Farm added successfully');
-    setShowAddModal(false);
-    setNewFarmName(''); setNewFarmLoc('');
+  const handleAdd = async () => {
+    if (!newFarm.name.trim()) { toast.error('Farm name is required'); return; }
+    try {
+      const response = await api.post('/farms', {
+        name: newFarm.name,
+        location: newFarm.location,
+        area: Number(newFarm.area) || 0,
+        soilType: newFarm.soilType,
+        status: newFarm.status
+      });
+      setFarms(prev => [response.data, ...prev]);
+      toast.success('Farm added successfully');
+      setShowAddModal(false);
+      setNewFarm({ name: '', location: '', area: '', soilType: '', status: 'Active' });
+    } catch (error) {
+      toast.error('Failed to add farm');
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!editFarm) return;
+    if (!editFarm.name.trim()) { toast.error('Farm name is required'); return; }
+    try {
+      await api.put(`/farms/${editFarm.id}`, editFarm);
+      setFarms(prev => prev.map(f => f.id === editFarm.id ? editFarm : f));
+      toast.success('Farm updated successfully');
+      setEditFarm(null);
+    } catch (error) {
+      toast.error('Failed to update farm');
+    }
   };
 
   return (
@@ -99,7 +139,7 @@ export default function FarmsPage() {
           ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
           : paged.map((farm, i) => (
             <motion.div
-              key={farm.id}
+              key={farm.id || i}
               className={styles.farmCard}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -107,22 +147,25 @@ export default function FarmsPage() {
             >
               <div className={styles.farmCardHeader}>
                 <div className={styles.farmIcon}><MdAgriculture size={22} /></div>
-                <Badge variant={statusVariant(farm.status)} dot>{farm.status}</Badge>
+                {/* Added fallback string "Unknown" */}
+                <Badge variant={statusVariant(farm.status || 'Unknown')} dot>{farm.status || 'Unknown'}</Badge>
               </div>
-              <h3 className={styles.farmName}>{farm.name}</h3>
-              <p className={styles.farmLoc}><MdLocationOn size={14} /> {farm.location}</p>
+              <h3 className={styles.farmName}>{farm.name || 'Unnamed Farm'}</h3>
+              <p className={styles.farmLoc}><MdLocationOn size={14} /> {farm.location || 'Unknown Location'}</p>
               <div className={styles.farmMeta}>
-                <span>{farm.area} {farm.areaUnit}</span>
-                <span>{farm.soilType}</span>
+                <span>{farm.area || 0} {farm.areaUnit || 'hectares'}</span>
+                <span>{farm.soilType || 'Unknown Soil'}</span>
               </div>
               <div className={styles.farmCrops}>
-                {farm.crops.slice(0, 3).map(c => (
+                {farm.crops?.slice(0, 3).map(c => (
                   <span key={c} className={styles.cropTag}>{c}</span>
                 ))}
               </div>
               <div className={styles.farmActions}>
-                <Button variant="outline" size="sm" style={{ flex: 1 }}>Edit</Button>
-                <Button variant="danger" size="sm" onClick={() => setDeleteId(farm.id)}>Delete</Button>
+                <Button variant="outline" size="sm" style={{ flex: 1 }} leftIcon={<MdEdit />} onClick={() => setEditFarm(farm)}>
+                  Edit
+                </Button>
+                <Button variant="danger" size="sm" onClick={() => setDeleteId(String(farm.id))}>Delete</Button>
               </div>
             </motion.div>
           ))
@@ -132,7 +175,7 @@ export default function FarmsPage() {
       {!loading && filtered.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
           <MdAgriculture size={48} style={{ marginBottom: 12, opacity: 0.3 }} />
-          <p>No farms found. Try adjusting your search.</p>
+          <p>No farms found. Try adjusting your search or add a new farm.</p>
         </div>
       )}
 
@@ -154,9 +197,47 @@ export default function FarmsPage() {
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Farm"
         footer={<><Button variant="ghost" onClick={() => setShowAddModal(false)}>Cancel</Button><Button onClick={handleAdd}>Add Farm</Button></>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Input label="Farm Name" placeholder="e.g. North Valley Farm" value={newFarmName} onChange={e => setNewFarmName(e.target.value)} />
-          <Input label="Location" placeholder="e.g. Punjab, India" value={newFarmLoc} onChange={e => setNewFarmLoc(e.target.value)} />
+          <Input label="Farm Name" placeholder="e.g. North Valley Farm" value={newFarm.name} onChange={e => setNewFarm({...newFarm, name: e.target.value})} />
+          <Input label="Location" placeholder="e.g. Punjab, India" value={newFarm.location} onChange={e => setNewFarm({...newFarm, location: e.target.value})} />
+          <Input label="Area (hectares)" type="number" placeholder="e.g. 45" value={newFarm.area} onChange={e => setNewFarm({...newFarm, area: e.target.value})} />
+          <Input label="Soil Type" placeholder="e.g. Alluvial" value={newFarm.soilType} onChange={e => setNewFarm({...newFarm, soilType: e.target.value})} />
+          <div>
+            <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>Status</label>
+            <select 
+              style={{ width: '100%', padding: '11px 14px', border: '1.5px solid var(--border-color)', borderRadius: 10, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14 }}
+              value={newFarm.status} 
+              onChange={e => setNewFarm({...newFarm, status: e.target.value as Farm['status']})}
+            >
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+              <option value="Harvested">Harvested</option>
+            </select>
+          </div>
         </div>
+      </Modal>
+
+      <Modal isOpen={!!editFarm} onClose={() => setEditFarm(null)} title="Edit Farm Details"
+        footer={<><Button variant="ghost" onClick={() => setEditFarm(null)}>Cancel</Button><Button onClick={handleEditSave}>Save Changes</Button></>}>
+        {editFarm && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <Input label="Farm Name" value={editFarm.name || ''} onChange={e => setEditFarm({...editFarm, name: e.target.value})} />
+            <Input label="Location" value={editFarm.location || ''} onChange={e => setEditFarm({...editFarm, location: e.target.value})} />
+            <Input label="Area (hectares)" type="number" value={editFarm.area || 0} onChange={e => setEditFarm({...editFarm, area: Number(e.target.value)})} />
+            <Input label="Soil Type" value={editFarm.soilType || ''} onChange={e => setEditFarm({...editFarm, soilType: e.target.value})} />
+            <div>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>Status</label>
+              <select 
+                style={{ width: '100%', padding: '11px 14px', border: '1.5px solid var(--border-color)', borderRadius: 10, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14 }}
+                value={editFarm.status || 'Active'} 
+                onChange={e => setEditFarm({...editFarm, status: e.target.value as Farm['status']})}
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="Harvested">Harvested</option>
+              </select>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
