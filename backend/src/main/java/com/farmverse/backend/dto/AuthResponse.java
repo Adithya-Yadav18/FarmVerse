@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class AuthResponse {
     private Tokens tokens = new Tokens();
-    private UserResponse user = new UserResponse(); // Changed from Object to UserResponse
+    private UserResponse user = new UserResponse();
 
     @Data
     public static class Tokens {
@@ -14,12 +14,17 @@ public class AuthResponse {
         private String tokenType = "Bearer";
     }
 
-    // NEW: Inner class to hold user details
     @Data
     public static class UserResponse {
         private Long id;
         private String name;
         private String email;
         private String role;
+        
+        // NEW: Added profile fields!
+        private String phoneNumber;
+        private String region;
+        private Integer farmingExperienceYears;
+        private String preferredLanguage;
     }
 }

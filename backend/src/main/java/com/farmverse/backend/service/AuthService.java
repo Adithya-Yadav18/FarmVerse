@@ -2,6 +2,7 @@ package com.farmverse.backend.service;
 
 import com.farmverse.backend.dto.AuthResponse;
 import com.farmverse.backend.dto.LoginRequest;
+import com.farmverse.backend.dto.ProfileUpdateRequest;
 import com.farmverse.backend.dto.RegisterRequest;
 import com.farmverse.backend.entity.Farmer;
 import com.farmverse.backend.entity.User;
@@ -109,5 +110,52 @@ public class AuthService {
         } catch (Exception e) {
             throw new RuntimeException("Invalid email or password");
         }
+    }
+
+        // Method to get the user's profile
+    public AuthResponse getProfile(String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Farmer farmer = farmerRepository.findByUser(user)
+                .orElseThrow(() -> new RuntimeException("Farmer profile not found"));
+
+        AuthResponse response = new AuthResponse();
+        // We don't need to generate new tokens just to view the profile, 
+        // but we can leave them empty or null since the frontend only reads the "user" object here.
+        populateUserResponse(response, user, farmer);
+        return response;
+    }
+
+    // Method to update the user's profile
+    public AuthResponse updateProfile(String userEmail, ProfileUpdateRequest request) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Farmer farmer = farmerRepository.findByUser(user)
+                .orElseThrow(() -> new RuntimeException("Farmer profile not found"));
+
+        // Update only the provided fields
+        if (request.getFullName() != null) farmer.setFullName(request.getFullName());
+        if (request.getPhoneNumber() != null) farmer.setPhoneNumber(request.getPhoneNumber());
+        if (request.getRegion() != null) farmer.setRegion(request.getRegion());
+        if (request.getFarmingExperienceYears() != null) farmer.setFarmingExperienceYears(request.getFarmingExperienceYears());
+        if (request.getPreferredLanguage() != null) farmer.setPreferredLanguage(request.getPreferredLanguage());
+
+        farmerRepository.save(farmer);
+
+        AuthResponse response = new AuthResponse();
+        populateUserResponse(response, user, farmer);
+        return response;
+    }
+
+    // 🧠 Senior Engineer Tip: Helper method to avoid repeating the same mapping code!
+    private void populateUserResponse(AuthResponse response, User user, Farmer farmer) {
+        response.getUser().setId(user.getId());
+        response.getUser().setName(farmer.getFullName());
+        response.getUser().setEmail(user.getEmail());
+        response.getUser().setRole(user.getRole());
+        response.getUser().setPhoneNumber(farmer.getPhoneNumber());
+        response.getUser().setRegion(farmer.getRegion());
+        response.getUser().setFarmingExperienceYears(farmer.getFarmingExperienceYears());
+        response.getUser().setPreferredLanguage(farmer.getPreferredLanguage());
     }
 }
