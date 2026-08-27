@@ -54,13 +54,14 @@ public class SecurityConfig {
         return bean;
     }
 
-    @Bean
+        @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/weather/**").permitAll() // NEW: Make weather public
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
             )
