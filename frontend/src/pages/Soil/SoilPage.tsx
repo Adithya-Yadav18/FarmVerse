@@ -50,16 +50,40 @@ export default function SoilPage() {
     if (!newSoil.farmId) { toast.error('Please select a farm'); return; }
     
     const ph = Number(newSoil.phLevel);
-    if (!newSoil.phLevel || isNaN(ph) || ph <= 0 || ph > 14) {
-      toast.error('Please enter a realistic pH level (between 1.0 and 14.0)');
+    if (!newSoil.phLevel || isNaN(ph) || ph < 3.0 || ph > 11.0) {
+      toast.error('pH must be within realistic agricultural range (3.0 to 11.0)');
       return;
     }
 
-    const n = Number(newSoil.nitrogen) || 0;
-    const p = Number(newSoil.phosphorus) || 0;
-    const k = Number(newSoil.potassium) || 0;
-    const oc = Number(newSoil.organicCarbon) || 0;
-    const m = Number(newSoil.moisture) || 0;
+    const n = Number(newSoil.nitrogen);
+    if (newSoil.nitrogen === '' || isNaN(n) || n < 0 || n > 100) {
+      toast.error('Nitrogen must be between 0% and 100%');
+      return;
+    }
+
+    const p = Number(newSoil.phosphorus);
+    if (newSoil.phosphorus === '' || isNaN(p) || p < 0 || p > 100) {
+      toast.error('Phosphorus must be between 0% and 100%');
+      return;
+    }
+
+    const k = Number(newSoil.potassium);
+    if (newSoil.potassium === '' || isNaN(k) || k < 0 || k > 100) {
+      toast.error('Potassium must be between 0% and 100%');
+      return;
+    }
+
+    const oc = Number(newSoil.organicCarbon);
+    if (newSoil.organicCarbon === '' || isNaN(oc) || oc < 0 || oc > 20) {
+      toast.error('Organic Carbon must be between 0% and 20%');
+      return;
+    }
+
+    const m = Number(newSoil.moisture);
+    if (newSoil.moisture === '' || isNaN(m) || m < 0 || m > 100) {
+      toast.error('Moisture must be between 0% and 100%');
+      return;
+    }
 
     if (n === 0 && p === 0 && k === 0 && oc === 0 && m === 0) {
       toast.error('Please provide valid soil test measurements (not all zeroes)');
@@ -244,12 +268,12 @@ export default function SoilPage() {
             </select>
           </div>
 
-          <Input label="pH Level (0-14)" type="number" placeholder="e.g. 6.5" value={newSoil.phLevel} onChange={e => setNewSoil({...newSoil, phLevel: e.target.value})} />
-          <Input label="Nitrogen (%) (0-100)" type="number" placeholder="e.g. 45" value={newSoil.nitrogen} onChange={e => setNewSoil({...newSoil, nitrogen: e.target.value})} />
-          <Input label="Phosphorus (%) (0-100)" type="number" placeholder="e.g. 30" value={newSoil.phosphorus} onChange={e => setNewSoil({...newSoil, phosphorus: e.target.value})} />
-          <Input label="Potassium (%) (0-100)" type="number" placeholder="e.g. 60" value={newSoil.potassium} onChange={e => setNewSoil({...newSoil, potassium: e.target.value})} />
-          <Input label="Organic Carbon (%)" type="number" placeholder="e.g. 2.5" value={newSoil.organicCarbon} onChange={e => setNewSoil({...newSoil, organicCarbon: e.target.value})} />
-          <Input label="Moisture (%)" type="number" placeholder="e.g. 55" value={newSoil.moisture} onChange={e => setNewSoil({...newSoil, moisture: e.target.value})} />
+          <Input label="pH Level (3.0 - 11.0)" type="number" step="0.1" min="3" max="11" placeholder="e.g. 6.5" value={newSoil.phLevel} onChange={e => setNewSoil({...newSoil, phLevel: e.target.value})} />
+          <Input label="Nitrogen (%) (0 - 100)" type="number" step="1" min="0" max="100" placeholder="e.g. 45" value={newSoil.nitrogen} onChange={e => setNewSoil({...newSoil, nitrogen: e.target.value})} />
+          <Input label="Phosphorus (%) (0 - 100)" type="number" step="1" min="0" max="100" placeholder="e.g. 30" value={newSoil.phosphorus} onChange={e => setNewSoil({...newSoil, phosphorus: e.target.value})} />
+          <Input label="Potassium (%) (0 - 100)" type="number" step="1" min="0" max="100" placeholder="e.g. 60" value={newSoil.potassium} onChange={e => setNewSoil({...newSoil, potassium: e.target.value})} />
+          <Input label="Organic Carbon (%) (0 - 20)" type="number" step="0.1" min="0" max="20" placeholder="e.g. 2.5" value={newSoil.organicCarbon} onChange={e => setNewSoil({...newSoil, organicCarbon: e.target.value})} />
+          <Input label="Moisture (%) (0 - 100)" type="number" step="1" min="0" max="100" placeholder="e.g. 55" value={newSoil.moisture} onChange={e => setNewSoil({...newSoil, moisture: e.target.value})} />
         </div>
       </Modal>
     </div>

@@ -40,7 +40,7 @@ public class GeminiService {
      */
     public String generateSoilRecommendation(SoilData soil, String farmName) {
         if (isInvalidOrAllZero(soil)) {
-            return "⚠️ Incomplete or invalid soil metrics detected (all zero values). Please enter realistic soil test values (e.g., pH between 4.0 - 9.0, positive N-P-K nutrient percentages, and soil moisture) to receive an accurate agronomic analysis and recommendation.";
+            return "⚠️ Incomplete, unrealistic, or out-of-bounds soil metrics detected. Realistic agricultural test ranges: pH (3.0 - 11.0), Nitrogen (0 - 100%), Phosphorus (0 - 100%), Potassium (0 - 100%), Organic Carbon (0 - 20%), Moisture (0 - 100%). Please enter valid soil lab test values to generate an accurate recommendation.";
         }
 
         if (apiKey == null || apiKey.trim().isEmpty() || "your_gemini_api_key_here".equalsIgnoreCase(apiKey.trim())) {
@@ -190,8 +190,20 @@ public class GeminiService {
         double oc = soil.getOrganicCarbon() != null ? soil.getOrganicCarbon() : 0.0;
         double moisture = soil.getMoisture() != null ? soil.getMoisture() : 0.0;
 
-        // If all parameters are zero or pH is 0 or outside realistic agricultural ranges (below 3.0 or above 11.0)
-        return (ph <= 0.0 && n == 0.0 && p == 0.0 && k == 0.0 && oc == 0.0 && moisture == 0.0)
-                || (ph <= 0.0 || ph > 14.0);
+        // Check if all zero/blank
+        if (ph <= 0.0 && n == 0.0 && p == 0.0 && k == 0.0 && oc == 0.0 && moisture == 0.0) {
+            return true;
+        }
+
+        // Realistic agricultural ranges:
+        // pH: 3.0 to 11.0
+        // N, P, K, Moisture: 0% to 100%
+        // Organic Carbon: 0% to 20%
+        return ph < 3.0 || ph > 11.0
+                || n < 0.0 || n > 100.0
+                || p < 0.0 || p > 100.0
+                || k < 0.0 || k > 100.0
+                || oc < 0.0 || oc > 20.0
+                || moisture < 0.0 || moisture > 100.0;
     }
 }
