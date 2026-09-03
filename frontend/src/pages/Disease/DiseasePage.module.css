@@ -1,5 +1,14 @@
-.layout { display: grid; grid-template-columns: 340px 1fr; gap: 24px; }
-@media (max-width: 1024px) { .layout { grid-template-columns: 1fr; } }
+.layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 1024px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
 
 .card {
   background: var(--bg-card);
@@ -8,10 +17,120 @@
   padding: 18px;
   cursor: pointer;
   transition: all var(--transition-base);
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
 }
-.card:hover { border-color: var(--color-error); box-shadow: var(--shadow-sm); }
-.cardActive { border-color: var(--color-error); background: rgba(239,68,68,0.04); }
 
-.cardTop { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.diseaseName { font-size: var(--text-base); font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.card:hover {
+  border-color: var(--color-emerald);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.cardActive {
+  border-color: var(--color-emerald);
+  background: rgba(16, 185, 129, 0.05);
+  box-shadow: 0 0 0 1px var(--color-emerald);
+}
+
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.diseaseName {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.scannerBox {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  border-radius: 12px;
+  background: #0f172a;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  border: 1.5px dashed var(--border-color);
+}
+
+.scannerBeam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #10B981, #34D399, transparent);
+  box-shadow: 0 0 12px #10B981, 0 0 24px #34D399;
+  animation: scan 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes scan {
+  0% { top: 0%; }
+  100% { top: 98%; }
+}
+
+.dropzone {
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--bg-secondary);
+}
+
+.dropzone:hover {
+  border-color: var(--color-emerald);
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.sampleLeafBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sampleLeafBtn:hover {
+  border-color: var(--color-emerald);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--color-emerald);
+}
+
+.prescriptionCard {
+  background: rgba(59, 130, 246, 0.06);
+  border: 1.5px solid rgba(59, 130, 246, 0.25);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 18px;
+}
+
+.verifiedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10B981;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}

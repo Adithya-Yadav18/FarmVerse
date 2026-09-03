@@ -130,17 +130,25 @@ export interface IrrigationSchedule {
 // ─── Disease Detection ────────────────────────────────────────────────────────
 export interface DiseaseDetection {
   id: string;
-  cropId: string;
+  cropId?: string;
   cropName: string;
   farmId: string;
+  farmName?: string;
+  farmerName?: string;
   detectedAt: string;
   disease: string;
+  pathogenType?: string;
   confidence: number;
   severity: 'Low' | 'Medium' | 'High' | 'Critical';
   affectedArea: number;
   treatment: string;
   status: 'Detected' | 'Treating' | 'Resolved';
   imageUrl?: string;
+  agronomistVerified?: boolean;
+  agronomistNotes?: string;
+  agronomistPrescription?: string;
+  verifiedByAgronomistName?: string;
+  updatedAt?: string;
 }
 
 // ─── AI Recommendations ───────────────────────────────────────────────────────
