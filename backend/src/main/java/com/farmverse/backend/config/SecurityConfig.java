@@ -64,6 +64,7 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/weather/**").permitAll() // NEW: Make weather public
+                .requestMatchers("/api/irrigation/iot/**").permitAll() // Real Hardware Device Protocol & Ingestion
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
             )
