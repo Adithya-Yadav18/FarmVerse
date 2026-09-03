@@ -30,5 +30,8 @@ public class User {
     private String role; // e.g., "ROLE_FARMER", "ROLE_AGRONOMIST", "ROLE_ADMIN", "ROLE_USER"
     private String phoneNumber;
     
+    private String resetToken;
+    private LocalDateTime resetTokenExpiry;
+    
     private LocalDateTime createdAt;
 }

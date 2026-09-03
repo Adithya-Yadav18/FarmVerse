@@ -206,4 +206,50 @@ public class AuthService {
             response.setPreferredLanguage("English");
         }
     }
+
+    public java.util.Map<String, Object> forgotPassword(com.farmverse.backend.dto.ForgotPasswordRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("No registered account found with email: " + normalizedEmail));
+
+        // Generate a 6-digit secure verification code
+        int randomPin = (int) (Math.random() * 900000) + 100000;
+        String resetToken = String.valueOf(randomPin);
+
+        user.setResetToken(resetToken);
+        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
+        userRepository.save(user);
+
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("success", true);
+        response.put("email", normalizedEmail);
+        response.put("resetToken", resetToken);
+        response.put("message", "Verification code generated: " + resetToken + " (Valid for 15 minutes).");
+        return response;
+    }
+
+    public java.util.Map<String, Object> resetPassword(com.farmverse.backend.dto.ResetPasswordRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("No registered account found with email: " + normalizedEmail));
+
+        if (user.getResetToken() == null || !user.getResetToken().equals(request.getToken().trim())) {
+            throw new IllegalArgumentException("Invalid verification code. Please check the code and try again.");
+        }
+
+        if (user.getResetTokenExpiry() == null || user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Verification code has expired. Please request a new password reset code.");
+        }
+
+        // Set and encode new password
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+        userRepository.save(user);
+
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("success", true);
+        response.put("message", "Password has been reset successfully. Please sign in with your new password.");
+        return response;
+    }
 }

@@ -38,11 +38,13 @@ export const authService = {
     await api.put('/auth/change-password', payload);
   },
 
-  forgotPassword: async (email: string): Promise<void> => {
-    await api.post('/auth/forgot-password', { email });
+  forgotPassword: async (email: string): Promise<{ success: boolean; email: string; resetToken?: string; message: string }> => {
+    const { data } = await api.post('/auth/forgot-password', { email });
+    return data;
   },
 
-  resetPassword: async (token: string, password: string): Promise<void> => {
-    await api.post('/auth/reset-password', { token, password });
+  resetPassword: async (payload: { email: string; token: string; password: string }): Promise<{ success: boolean; message: string }> => {
+    const { data } = await api.post('/auth/reset-password', payload);
+    return data;
   },
 };

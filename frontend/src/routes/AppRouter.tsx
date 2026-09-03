@@ -8,6 +8,7 @@ import { Skeleton } from '../components/ui/Skeleton/Skeleton';
 const HomePage        = lazy(() => import('../pages/Home/HomePage'));
 const LoginPage       = lazy(() => import('../pages/Login/LoginPage'));
 const RegisterPage    = lazy(() => import('../pages/Register/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('../pages/ForgotPassword/ForgotPasswordPage'));
 const DashboardPage   = lazy(() => import('../pages/Dashboard/DashboardPage'));
 const FarmsPage       = lazy(() => import('../pages/Farms/FarmsPage'));
 const CropsPage       = lazy(() => import('../pages/Crops/CropsPage'));
@@ -39,9 +40,10 @@ export function AppRouter() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public */}
-          <Route path="/"        element={<HomePage />} />
-          <Route path="/login"   element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/"                element={<HomePage />} />
+          <Route path="/login"           element={<LoginPage />} />
+          <Route path="/register"        element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           {/* Protected - Dashboard Layout */}
           <Route element={<ProtectedRoute />}>

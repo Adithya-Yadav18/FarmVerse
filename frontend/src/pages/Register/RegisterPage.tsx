@@ -30,6 +30,7 @@ export default function RegisterPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [showPw, setShowPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -138,9 +139,19 @@ export default function RegisterPage() {
 
             <Input
               label="Confirm Password"
-              type="password"
+              type={showConfirmPw ? 'text' : 'password'}
               placeholder="Repeat password"
               leftIcon={<MdLock size={18} />}
+              rightIcon={
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPw(s => !s)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}
+                  aria-label={showConfirmPw ? "Hide confirm password" : "Show confirm password"}
+                >
+                  {showConfirmPw ? <MdVisibilityOff size={18} /> : <MdVisibility size={18} />}
+                </button>
+              }
               error={errors.confirmPassword?.message}
               autoComplete="new-password"
               {...register('confirmPassword')}

@@ -34,15 +34,25 @@
 }
 .input:disabled { opacity: 0.6; cursor: not-allowed; background: var(--bg-tertiary); }
 
-.leftIcon, .rightIcon {
+.leftIcon {
   position: absolute;
+  left: 12px;
   display: flex;
   align-items: center;
   color: var(--text-muted);
   pointer-events: none;
 }
-.leftIcon  { left: 12px; }
-.rightIcon { right: 12px; }
+
+.rightIcon {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 2;
+}
 .hasLeft  { padding-left: 40px; }
 .hasRight { padding-right: 40px; }
 

@@ -34,6 +34,16 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<java.util.Map<String, Object>> forgotPassword(@Valid @RequestBody com.farmverse.backend.dto.ForgotPasswordRequest request) {
+        return ResponseEntity.ok(authService.forgotPassword(request));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<java.util.Map<String, Object>> resetPassword(@Valid @RequestBody com.farmverse.backend.dto.ResetPasswordRequest request) {
+        return ResponseEntity.ok(authService.resetPassword(request));
+    }
+
     // GET /api/auth/me - View Profile
     @GetMapping("/me")
     public ResponseEntity<ProfileResponse> getMyProfile() {
