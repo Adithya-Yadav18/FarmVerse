@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDateTime;
 
 @Service
@@ -25,7 +26,11 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
 
-    public AuthService(UserRepository userRepository, FarmerRepository farmerRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager, JwtService jwtService) {
+    public AuthService(UserRepository userRepository,
+                       FarmerRepository farmerRepository,
+                       PasswordEncoder passwordEncoder,
+                       AuthenticationManager authenticationManager,
+                       JwtService jwtService) {
         this.userRepository = userRepository;
         this.farmerRepository = farmerRepository;
         this.passwordEncoder = passwordEncoder;
@@ -34,128 +39,171 @@ public class AuthService {
     }
 
     public AuthResponse registerFarmer(RegisterRequest request) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Error: Email is already in use!");
+        // Validate password confirmation
+        if (request.getConfirmPassword() != null && !request.getPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("Passwords do not match");
+        }
+
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+            throw new IllegalArgumentException("Email is already registered. Please login or use a different email address.");
+        }
+
+        // Determine Spring Security role
+        String inputRole = request.getRole() != null ? request.getRole().trim().toUpperCase() : "FARMER";
+        String securityRole;
+        if (inputRole.contains("ADMIN")) {
+            securityRole = "ROLE_ADMIN";
+        } else if (inputRole.contains("AGRONOMIST")) {
+            securityRole = "ROLE_AGRONOMIST";
+        } else if (inputRole.contains("NORMAL") || inputRole.equals("USER")) {
+            securityRole = "ROLE_NORMAL_USER";
+        } else {
+            securityRole = "ROLE_FARMER";
         }
 
         User user = new User();
-        user.setEmail(request.getEmail());
+        user.setFullName(request.getName().trim());
+        user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        
-        // Use the role from frontend, or default to FARMER
-        if (request.getRole() != null) {
-            user.setRole("ROLE_" + request.getRole().toUpperCase());
-        } else {
-            user.setRole("ROLE_FARMER");
-        }
+        user.setRole(securityRole);
+        user.setPhoneNumber(request.getPhoneNumber());
         user.setCreatedAt(LocalDateTime.now());
-        
+
         User savedUser = userRepository.save(user);
 
-        Farmer farmer = new Farmer();
-        farmer.setUser(savedUser);
-        farmer.setFullName(request.getName());
-        farmer.setPhoneNumber(request.getPhoneNumber());
-        farmer.setRegion(request.getRegion());
-        farmer.setFarmingExperienceYears(request.getFarmingExperienceYears());
-        farmer.setPreferredLanguage(request.getPreferredLanguage());
-        farmer.setCreatedAt(LocalDateTime.now());
+        // If registered role is Farmer, create matching Farmer domain profile
+        Farmer savedFarmer = null;
+        if ("ROLE_FARMER".equals(securityRole)) {
+            Farmer farmer = new Farmer();
+            farmer.setUser(savedUser);
+            farmer.setFullName(request.getName().trim());
+            farmer.setPhoneNumber(request.getPhoneNumber());
+            farmer.setRegion(request.getRegion());
+            farmer.setFarmingExperienceYears(request.getFarmingExperienceYears() != null ? request.getFarmingExperienceYears() : 0);
+            farmer.setPreferredLanguage(request.getPreferredLanguage() != null ? request.getPreferredLanguage() : "English");
+            farmer.setCreatedAt(LocalDateTime.now());
+            savedFarmer = farmerRepository.save(farmer);
+        }
 
-        Farmer savedFarmer = farmerRepository.save(farmer);
-
-        // Generate a token for the newly registered user
+        // Generate JWT token
         String jwtToken = jwtService.generateToken(savedUser.getEmail());
-        
+
         AuthResponse response = new AuthResponse();
         response.getTokens().setAccessToken(jwtToken);
-
-        // UPDATED: Use the helper method to send ALL fields!
         populateUserResponse(response.getUser(), savedUser, savedFarmer);
 
         return response;
     }
 
     public AuthResponse loginFarmer(LoginRequest request) {
-        try {
-            UsernamePasswordAuthenticationToken authToken = 
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword());
-            
-            Authentication authentication = authenticationManager.authenticate(authToken);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            
-            // Fetch the user from the database
-            User loggedInUser = userRepository.findByEmail(request.getEmail())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            
-            // Fetch the Farmer profile to get the real name!
-            Farmer loggedInFarmer = farmerRepository.findByUser(loggedInUser)
-                    .orElseThrow(() -> new RuntimeException("Farmer profile not found"));
-            
-            String jwtToken = jwtService.generateToken(loggedInUser.getEmail());
-            
-            AuthResponse response = new AuthResponse();
-            response.getTokens().setAccessToken(jwtToken);
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
 
-            // UPDATED: Use the helper method to send ALL fields!
-            populateUserResponse(response.getUser(), loggedInUser, loggedInFarmer);
-            
-            return response;
-            
-        } catch (Exception e) {
-            throw new RuntimeException("Invalid email or password");
-        }
+        // Perform authentication
+        UsernamePasswordAuthenticationToken authToken =
+                new UsernamePasswordAuthenticationToken(normalizedEmail, request.getPassword());
+
+        Authentication authentication = authenticationManager.authenticate(authToken);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        // Fetch User
+        User loggedInUser = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User account not found"));
+
+        // Lookup Farmer profile conditionally (never crash on non-farmer roles)
+        Farmer loggedInFarmer = farmerRepository.findByUser(loggedInUser).orElse(null);
+
+        String jwtToken = jwtService.generateToken(loggedInUser.getEmail());
+
+        AuthResponse response = new AuthResponse();
+        response.getTokens().setAccessToken(jwtToken);
+        populateUserResponse(response.getUser(), loggedInUser, loggedInFarmer);
+
+        return response;
     }
 
-    // Method to get the user's profile
     public AuthResponse.UserResponse getProfile(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        Farmer farmer = farmerRepository.findByUser(user)
-                .orElseThrow(() -> new RuntimeException("Farmer profile not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User account not found"));
+        Farmer farmer = farmerRepository.findByUser(user).orElse(null);
 
         AuthResponse.UserResponse userResp = new AuthResponse.UserResponse();
         populateUserResponse(userResp, user, farmer);
         return userResp;
     }
 
-    // Method to update the user's profile
     public AuthResponse.UserResponse updateProfile(String userEmail, ProfileUpdateRequest request) {
         User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        Farmer farmer = farmerRepository.findByUser(user)
-                .orElseThrow(() -> new RuntimeException("Farmer profile not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User account not found"));
+        Farmer farmer = farmerRepository.findByUser(user).orElse(null);
 
-        // Update Farmer details
-        if (request.getName() != null) farmer.setFullName(request.getName());
-        if (request.getPhone() != null) farmer.setPhoneNumber(request.getPhone());
-        if (request.getLocation() != null) farmer.setRegion(request.getLocation());
-        farmerRepository.save(farmer);
+        // Update User table
+        if (request.getName() != null && !request.getName().isBlank()) {
+            user.setFullName(request.getName().trim());
+        }
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            user.setPhoneNumber(request.getPhone().trim());
+        }
 
-        // Update User email safely
-        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
-            // 1. Check if the new email is already taken by someone else
-            if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-                throw new RuntimeException("Error: This email is already in use by another account!");
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            String newEmail = request.getEmail().trim().toLowerCase();
+            if (!newEmail.equals(user.getEmail())) {
+                if (userRepository.findByEmail(newEmail).isPresent()) {
+                    throw new IllegalArgumentException("Error: This email address is already in use by another account!");
+                }
+                user.setEmail(newEmail);
             }
-            // 2. Update the email
-            user.setEmail(request.getEmail());
-            userRepository.save(user);
+        }
+        userRepository.save(user);
+
+        // If Farmer profile exists, update it as well
+        if (farmer != null) {
+            if (request.getName() != null) farmer.setFullName(request.getName().trim());
+            if (request.getPhone() != null) farmer.setPhoneNumber(request.getPhone().trim());
+            if (request.getLocation() != null) farmer.setRegion(request.getLocation().trim());
+            farmerRepository.save(farmer);
         }
 
         AuthResponse.UserResponse userResp = new AuthResponse.UserResponse();
         populateUserResponse(userResp, user, farmer);
         return userResp;
     }
-    
-    // 🧠 Senior Engineer Tip: Helper method to avoid repeating the same mapping code!
+
     private void populateUserResponse(AuthResponse.UserResponse response, User user, Farmer farmer) {
         response.setId(user.getId());
-        response.setName(farmer.getFullName());
+        String displayName = (farmer != null && farmer.getFullName() != null && !farmer.getFullName().isBlank())
+                ? farmer.getFullName()
+                : (user.getFullName() != null ? user.getFullName() : "User");
+        response.setName(displayName);
         response.setEmail(user.getEmail());
-        response.setRole(user.getRole());
-        response.setPhoneNumber(farmer.getPhoneNumber());
-        response.setRegion(farmer.getRegion());
-        response.setFarmingExperienceYears(farmer.getFarmingExperienceYears());
-        response.setPreferredLanguage(farmer.getPreferredLanguage());
+
+        // Normalize role for frontend consumption (Farmer, Agronomist, Admin, Normal User)
+        String rawRole = user.getRole();
+        if (rawRole != null) {
+            String clean = rawRole.replace("ROLE_", "").toUpperCase();
+            if (clean.contains("ADMIN")) {
+                response.setRole("Admin");
+            } else if (clean.contains("AGRONOMIST")) {
+                response.setRole("Agronomist");
+            } else if (clean.contains("NORMAL") || clean.equals("USER")) {
+                response.setRole("Normal User");
+            } else {
+                response.setRole("Farmer");
+            }
+        } else {
+            response.setRole("Farmer");
+        }
+
+        if (farmer != null) {
+            response.setPhoneNumber(farmer.getPhoneNumber() != null ? farmer.getPhoneNumber() : user.getPhoneNumber());
+            response.setRegion(farmer.getRegion());
+            response.setFarmingExperienceYears(farmer.getFarmingExperienceYears());
+            response.setPreferredLanguage(farmer.getPreferredLanguage());
+        } else {
+            response.setPhoneNumber(user.getPhoneNumber());
+            response.setRegion(null);
+            response.setFarmingExperienceYears(0);
+            response.setPreferredLanguage("English");
+        }
     }
 }

@@ -23,10 +23,12 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private String fullName;
     private String email;
     @JsonIgnore
     private String password;
-    private String role; // e.g., "ROLE_FARMER"
+    private String role; // e.g., "ROLE_FARMER", "ROLE_AGRONOMIST", "ROLE_ADMIN", "ROLE_USER"
+    private String phoneNumber;
     
     private LocalDateTime createdAt;
 }

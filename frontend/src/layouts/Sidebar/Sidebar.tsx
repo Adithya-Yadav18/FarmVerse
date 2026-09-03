@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { initials } from '../../utils';
 import { cn } from '../../utils';
+import type { UserRole } from '../../types';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -21,37 +22,54 @@ interface SidebarProps {
   onMobileClose: () => void;
 }
 
-const NAV_ITEMS = [
+interface NavItem {
+  to: string;
+  icon: React.ReactNode;
+  label: string;
+  badge?: boolean;
+  roles?: UserRole[];
+}
+
+interface NavSection {
+  section: string;
+  items: NavItem[];
+}
+
+const ALL_ROLES: UserRole[] = ['Admin', 'Farmer', 'Agronomist', 'Normal User'];
+const AGRI_ROLES: UserRole[] = ['Admin', 'Farmer', 'Agronomist'];
+const FARM_OPERATORS: UserRole[] = ['Admin', 'Farmer'];
+
+const NAV_CONFIG: NavSection[] = [
   {
     section: 'Main',
     items: [
-      { to: '/dashboard', icon: <MdDashboard />, label: 'Dashboard' },
+      { to: '/dashboard', icon: <MdDashboard />, label: 'Dashboard', roles: ALL_ROLES },
     ],
   },
   {
     section: 'Farm Management',
     items: [
-      { to: '/farms', icon: <MdAgriculture />, label: 'Farms' },
-      { to: '/crops', icon: <MdGrass />, label: 'Crops' },
-      { to: '/soil', icon: <MdScience />, label: 'Soil Analysis' },
-      { to: '/irrigation', icon: <MdWaterDrop />, label: 'Irrigation' },
+      { to: '/farms', icon: <MdAgriculture />, label: 'Farms', roles: AGRI_ROLES },
+      { to: '/crops', icon: <MdGrass />, label: 'Crops', roles: AGRI_ROLES },
+      { to: '/soil', icon: <MdScience />, label: 'Soil Analysis', roles: AGRI_ROLES },
+      { to: '/irrigation', icon: <MdWaterDrop />, label: 'Irrigation', roles: FARM_OPERATORS },
     ],
   },
   {
     section: 'Intelligence',
     items: [
-      { to: '/weather', icon: <MdCloud />, label: 'Weather' },
-      { to: '/disease', icon: <MdBugReport />, label: 'Disease Detection' },
-      { to: '/ai-recommendations', icon: <MdAutoAwesome />, label: 'AI Recommendations' },
+      { to: '/weather', icon: <MdCloud />, label: 'Weather', roles: ALL_ROLES },
+      { to: '/disease', icon: <MdBugReport />, label: 'Disease Detection', roles: AGRI_ROLES },
+      { to: '/ai-recommendations', icon: <MdAutoAwesome />, label: 'AI Advisory', roles: ALL_ROLES },
     ],
   },
   {
     section: 'Reports & Settings',
     items: [
-      { to: '/notifications', icon: <MdNotifications />, label: 'Notifications', badge: true },
-      { to: '/reports', icon: <MdAssessment />, label: 'Reports' },
-      { to: '/profile', icon: <MdPerson />, label: 'Profile' },
-      { to: '/settings', icon: <MdSettings />, label: 'Settings' },
+      { to: '/notifications', icon: <MdNotifications />, label: 'Notifications', badge: true, roles: ALL_ROLES },
+      { to: '/reports', icon: <MdAssessment />, label: 'Reports', roles: AGRI_ROLES },
+      { to: '/profile', icon: <MdPerson />, label: 'Profile', roles: ALL_ROLES },
+      { to: '/settings', icon: <MdSettings />, label: 'Settings', roles: ALL_ROLES },
     ],
   },
 ];
@@ -65,6 +83,23 @@ export function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onMobileClose
     logout();
     navigate('/login', { replace: true });
   };
+
+  // Resolve clean role string
+  const rawRole = (user?.role || 'Farmer').replace('ROLE_', '').replace('_', ' ');
+  const normalizedRole: UserRole =
+    rawRole.toLowerCase().includes('normal') || rawRole.toLowerCase() === 'user'
+      ? 'Normal User'
+      : rawRole.toLowerCase().includes('admin')
+      ? 'Admin'
+      : rawRole.toLowerCase().includes('agronomist')
+      ? 'Agronomist'
+      : 'Farmer';
+
+  // Dynamically filter sections based on active user role
+  const dynamicSections = NAV_CONFIG.map(section => ({
+    ...section,
+    items: section.items.filter(item => !item.roles || item.roles.includes(normalizedRole)),
+  })).filter(section => section.items.length > 0);
 
   return (
     <>
@@ -110,9 +145,9 @@ export function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onMobileClose
           </AnimatePresence>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation - Dynamically filtered by RBAC */}
         <nav className={styles.nav}>
-          {NAV_ITEMS.map(section => (
+          {dynamicSections.map(section => (
             <div key={section.section} className={styles.navSection}>
               {!collapsed && (
                 <p className={styles.sectionLabel}>{section.section}</p>
@@ -149,7 +184,7 @@ export function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onMobileClose
             {!collapsed && (
               <div className={styles.userInfo}>
                 <p className={styles.userName}>{user?.name ?? 'User'}</p>
-                <p className={styles.userRole}>{user?.role ?? 'Farmer'}</p>
+                <p className={styles.userRole}>{normalizedRole}</p>
               </div>
             )}
           </NavLink>

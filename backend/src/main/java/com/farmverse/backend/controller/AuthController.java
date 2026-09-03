@@ -6,16 +6,11 @@ import com.farmverse.backend.dto.ProfileResponse;
 import com.farmverse.backend.dto.ProfileUpdateRequest;
 import com.farmverse.backend.dto.RegisterRequest;
 import com.farmverse.backend.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
-
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -28,24 +23,15 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> registerFarmer(@RequestBody RegisterRequest request) {
-        try {
-            AuthResponse response = authService.registerFarmer(request);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body(null);
-        }
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        AuthResponse response = authService.registerFarmer(request);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> loginFarmer(@RequestBody LoginRequest request) {
-        try {
-            AuthResponse response = authService.loginFarmer(request);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(null);
-        }
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        AuthResponse response = authService.loginFarmer(request);
+        return ResponseEntity.ok(response);
     }
 
     // GET /api/auth/me - View Profile
@@ -53,17 +39,17 @@ public class AuthController {
     public ResponseEntity<ProfileResponse> getMyProfile() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userEmail = authentication.getName();
-        
+
         AuthResponse.UserResponse userData = authService.getProfile(userEmail);
         return ResponseEntity.ok(new ProfileResponse(userData));
     }
-    
+
     // PUT /api/auth/profile - Update Profile
     @PutMapping("/profile")
     public ResponseEntity<ProfileResponse> updateMyProfile(@RequestBody ProfileUpdateRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userEmail = authentication.getName();
-        
+
         AuthResponse.UserResponse userData = authService.updateProfile(userEmail, request);
         return ResponseEntity.ok(new ProfileResponse(userData));
     }

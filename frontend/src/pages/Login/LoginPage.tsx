@@ -40,18 +40,11 @@ export default function LoginPage() {
       toast.success(`Welcome back, ${res.user.name}!`);
       navigate(from, { replace: true });
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Invalid email/password or server is unreachable.';
-      toast.error(`Login failed. ${msg}`);
+      const msg = error.response?.data?.message || error.response?.data?.error || 'Invalid email/password or server is unreachable.';
+      toast.error(msg);
     }
   };
 
-  // ── Demo login (for testing without backend) ──────────────────────────────
-  const handleDemoLogin = () => {
-    const demoUser = { id: '1', name: 'Demo Farmer', email: 'demo@farmverse.io', role: 'Farmer' as const, createdAt: new Date().toISOString() };
-    login('demo_access_token', 'demo_refresh_token', demoUser);
-    toast.success('Logged in as Demo Farmer');
-    navigate('/dashboard', { replace: true });
-  };
 
   return (
     <div className={styles.page}>
@@ -118,12 +111,6 @@ export default function LoginPage() {
 
             <Button type="submit" fullWidth loading={isSubmitting} size="lg">
               Sign In
-            </Button>
-
-            <div className={styles.divider}><span>or</span></div>
-
-            <Button type="button" variant="outline" fullWidth size="lg" onClick={handleDemoLogin}>
-              Continue with Demo Account
             </Button>
           </form>
 

@@ -7,14 +7,32 @@ interface ProtectedRouteProps {
   allowedRoles?: UserRole[];
 }
 
+export const normalizeRole = (role?: string): UserRole => {
+  if (!role) return 'Normal User';
+  const clean = role.replace('ROLE_', '').toUpperCase();
+  if (clean.includes('ADMIN')) return 'Admin';
+  if (clean.includes('AGRONOMIST')) return 'Agronomist';
+  if (clean.includes('NORMAL') || clean === 'USER') return 'Normal User';
+  return 'Farmer';
+};
+
 export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   const { isAuthenticated, user, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <div className="animate-spin" style={{ width: 40, height: 40, border: '4px solid var(--border-color)', borderTopColor: 'var(--color-emerald)', borderRadius: '50%' }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-primary)' }}>
+        <div
+          className="animate-spin"
+          style={{
+            width: 40,
+            height: 40,
+            border: '4px solid var(--border-color)',
+            borderTopColor: 'var(--color-emerald)',
+            borderRadius: '50%',
+          }}
+        />
       </div>
     );
   }
@@ -23,8 +41,11 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+  if (allowedRoles && user) {
+    const userRole = normalizeRole(user.role);
+    if (!allowedRoles.includes(userRole)) {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return <Outlet />;

@@ -16,7 +16,7 @@ import styles from '../Login/LoginPage.module.css';
 const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Enter a valid email address'),
-  role: z.enum(['Admin', 'Farmer', 'Agronomist']),
+  role: z.enum(['Admin', 'Farmer', 'Agronomist', 'Normal User']),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
 }).refine(d => d.password === d.confirmPassword, {
@@ -116,6 +116,7 @@ export default function RegisterPage() {
                 <option value="Farmer">Farmer</option>
                 <option value="Agronomist">Agronomist</option>
                 <option value="Admin">Admin</option>
+                <option value="Normal User">Normal User</option>
               </select>
               {errors.role && <p style={{ color: 'var(--color-error)', fontSize: 12, marginTop: 4 }}>{errors.role.message}</p>}
             </div>

@@ -1,5 +1,5 @@
 // ─── User & Auth ─────────────────────────────────────────────────────────────
-export type UserRole = 'Admin' | 'Farmer' | 'Agronomist';
+export type UserRole = 'Admin' | 'Farmer' | 'Agronomist' | 'Normal User';
 
 export interface User {
   id: string;

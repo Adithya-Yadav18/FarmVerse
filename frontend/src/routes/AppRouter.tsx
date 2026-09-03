@@ -46,18 +46,27 @@ export function AppRouter() {
           {/* Protected - Dashboard Layout */}
           <Route element={<ProtectedRoute />}>
             <Route element={<DashboardLayout />}>
-              <Route path="/dashboard"         element={<DashboardPage />} />
-              <Route path="/farms"             element={<FarmsPage />} />
-              <Route path="/crops"             element={<CropsPage />} />
-              <Route path="/soil"              element={<SoilPage />} />
-              <Route path="/weather"           element={<WeatherPage />} />
-              <Route path="/irrigation"        element={<IrrigationPage />} />
-              <Route path="/disease"           element={<DiseasePage />} />
+              {/* Universal Access (All Roles) */}
+              <Route path="/dashboard"          element={<DashboardPage />} />
+              <Route path="/weather"            element={<WeatherPage />} />
               <Route path="/ai-recommendations" element={<AIPage />} />
-              <Route path="/notifications"     element={<NotificationsPage />} />
-              <Route path="/reports"           element={<ReportsPage />} />
-              <Route path="/profile"           element={<ProfilePage />} />
-              <Route path="/settings"          element={<SettingsPage />} />
+              <Route path="/notifications"      element={<NotificationsPage />} />
+              <Route path="/profile"            element={<ProfilePage />} />
+              <Route path="/settings"           element={<SettingsPage />} />
+
+              {/* Agriculture & Field Operations Access (Farmer, Agronomist, Admin) */}
+              <Route element={<ProtectedRoute allowedRoles={['Farmer', 'Agronomist', 'Admin']} />}>
+                <Route path="/farms"    element={<FarmsPage />} />
+                <Route path="/crops"    element={<CropsPage />} />
+                <Route path="/soil"     element={<SoilPage />} />
+                <Route path="/disease"  element={<DiseasePage />} />
+                <Route path="/reports"  element={<ReportsPage />} />
+              </Route>
+
+              {/* Farm Operator Access (Farmer, Admin) */}
+              <Route element={<ProtectedRoute allowedRoles={['Farmer', 'Admin']} />}>
+                <Route path="/irrigation" element={<IrrigationPage />} />
+              </Route>
             </Route>
           </Route>
 
