@@ -29,18 +29,43 @@ public class WeatherService {
             throw new IllegalArgumentException("City name must be at least 2 characters long");
         }
         try {
-            String encodedCity = java.net.URLEncoder.encode(city.trim(), java.nio.charset.StandardCharsets.UTF_8);
-            // 1. Geocode the city name to get Lat/Lon
-            String geoUrl = String.format("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1&language=en&format=json", encodedCity);
-            JsonNode geoResponse = objectMapper.readTree(webClient.get().uri(geoUrl).retrieve().bodyToMono(String.class).block());
-
-            if (geoResponse.path("results").isMissingNode() || geoResponse.path("results").size() == 0) {
-                throw new IllegalArgumentException("City not found: " + city);
+            // Extract primary city if comma-separated e.g. "Birmingham, England, United Kingdom"
+            String primaryCity = city.trim();
+            if (primaryCity.contains(",")) {
+                primaryCity = primaryCity.split(",")[0].trim();
             }
 
-            double lat = geoResponse.path("results").get(0).path("latitude").asDouble();
-            double lon = geoResponse.path("results").get(0).path("longitude").asDouble();
-            String cityName = geoResponse.path("results").get(0).path("name").asText();
+            String encodedCity = java.net.URLEncoder.encode(primaryCity, java.nio.charset.StandardCharsets.UTF_8);
+            // 1. Geocode the city name (request top 10 to prioritize Indian regions)
+            String geoUrl = String.format("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=10&language=en&format=json", encodedCity);
+            JsonNode geoResponse = objectMapper.readTree(webClient.get().uri(geoUrl).retrieve().bodyToMono(String.class).block());
+
+            JsonNode results = geoResponse.path("results");
+            if (results.isMissingNode() || results.size() == 0) {
+                // Fallback attempt with full encoded query
+                String fallbackUrl = String.format("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=10&language=en&format=json",
+                        java.net.URLEncoder.encode(city.trim(), java.nio.charset.StandardCharsets.UTF_8));
+                geoResponse = objectMapper.readTree(webClient.get().uri(fallbackUrl).retrieve().bodyToMono(String.class).block());
+                results = geoResponse.path("results");
+                if (results.isMissingNode() || results.size() == 0) {
+                    throw new IllegalArgumentException("City not found: " + city);
+                }
+            }
+
+            // Prefer Indian location if available, otherwise take first result
+            JsonNode selectedNode = results.get(0);
+            for (JsonNode node : results) {
+                String countryCode = node.path("country_code").asText("");
+                String country = node.path("country").asText("");
+                if ("IN".equalsIgnoreCase(countryCode) || "India".equalsIgnoreCase(country)) {
+                    selectedNode = node;
+                    break;
+                }
+            }
+
+            double lat = selectedNode.path("latitude").asDouble();
+            double lon = selectedNode.path("longitude").asDouble();
+            String cityName = selectedNode.path("name").asText();
 
             // 2. Fetch Weather Data (Changed to forecast_days=8 so we can skip today and show next 7)
             String forecastUrl = String.format(
@@ -119,23 +144,33 @@ public class WeatherService {
 
     public List<CitySuggestion> searchCities(String query) {
         if (query == null || query.trim().length() < 2) return new ArrayList<>();
-        
-        String geoUrl = String.format("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=5&language=en&format=json", query);
-        
+
+        String geoUrl = String.format("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=10&language=en&format=json",
+                java.net.URLEncoder.encode(query.trim(), java.nio.charset.StandardCharsets.UTF_8));
+
         try {
             JsonNode geoResponse = objectMapper.readTree(webClient.get().uri(geoUrl).retrieve().bodyToMono(String.class).block());
-            List<CitySuggestion> list = new ArrayList<>();
-            
+            List<CitySuggestion> indianList = new ArrayList<>();
+            List<CitySuggestion> otherList = new ArrayList<>();
+
             if (!geoResponse.path("results").isMissingNode()) {
                 for (JsonNode node : geoResponse.path("results")) {
                     CitySuggestion sug = new CitySuggestion();
                     sug.setName(node.path("name").asText());
                     sug.setRegion(node.path("admin1").asText());
                     sug.setCountry(node.path("country").asText());
-                    list.add(sug);
+                    String countryCode = node.path("country_code").asText("");
+
+                    if ("IN".equalsIgnoreCase(countryCode) || "India".equalsIgnoreCase(sug.getCountry())) {
+                        indianList.add(sug);
+                    } else {
+                        otherList.add(sug);
+                    }
                 }
             }
-            return list;
+            // Combine: Indian cities first, then others
+            indianList.addAll(otherList);
+            return indianList.size() > 6 ? indianList.subList(0, 6) : indianList;
         } catch (Exception e) {
             return new ArrayList<>();
         }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { MdWaterDrop, MdAir, MdCompress, MdUmbrella, MdSearch, MdSave } from 'react-icons/md';
+import { MdWaterDrop, MdAir, MdCompress, MdUmbrella, MdSearch, MdSave, MdLocationSearching } from 'react-icons/md';
 import { PageHeader } from '../../components/ui/PageHeader/PageHeader';
 import { Card } from '../../components/ui/Card/Card';
 import { Input } from '../../components/ui/Input/Input';
@@ -17,11 +17,11 @@ import styles from './WeatherPage.module.css';
 export default function WeatherPage() {
   const { user, updateUser } = useAuth();
   
-  // Initialize city from user's saved profile region, or default to Bangalore
-  const [loading, setLoading] = useState(true);
+  // Initialize city from user's saved profile region (no hardcoded foreign defaults!)
+  const initialCity = user?.location || user?.region || '';
+  const [loading, setLoading] = useState(Boolean(initialCity));
   const [weather, setWeather] = useState<any>(null);
   
-  const initialCity = user?.location || 'Bangalore';
   const [searchQuery, setSearchQuery] = useState(initialCity);
   const [selectedCity, setSelectedCity] = useState(initialCity);
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -29,8 +29,10 @@ export default function WeatherPage() {
 
   // Fetch suggestions as user types
   useEffect(() => {
-    if (debouncedQuery && debouncedQuery.length > 2) {
-      api.get(`/weather/search?q=${debouncedQuery}`).then(res => setSuggestions(res.data));
+    if (debouncedQuery && debouncedQuery.trim().length > 2) {
+      api.get(`/weather/search?q=${encodeURIComponent(debouncedQuery.trim())}`)
+        .then(res => setSuggestions(res.data || []))
+        .catch(() => setSuggestions([]));
     } else {
       setSuggestions([]);
     }
@@ -38,29 +40,34 @@ export default function WeatherPage() {
 
   // Fetch weather when a city is selected
   const fetchWeather = async (cityName: string) => {
+    if (!cityName || cityName.trim().length < 2) return;
     try {
       setLoading(true);
       setSuggestions([]);
-      const res = await api.get(`/weather?city=${cityName}`);
+      const cleanCity = cityName.trim().split(',')[0].trim();
+      const res = await api.get(`/weather?city=${encodeURIComponent(cleanCity)}`);
       setWeather(res.data);
-    } catch (error) {
+      setSelectedCity(cleanCity);
+    } catch (error: any) {
       console.error("Failed to fetch weather", error);
-      toast.error("Failed to fetch weather. Check if the city name is valid.");
+      const msg = error.response?.data?.message || `Could not find weather data for "${cityName}". Try searching by city name.`;
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  // NEW: Save the currently viewed city to the user's profile
+  // Save the currently viewed city to the user's profile
   const saveDefaultRegion = async () => {
+    if (!selectedCity) return;
     try {
       await authService.updateProfile({
         name: user?.name,
         email: user?.email,
         phone: user?.phone,
-        location: selectedCity // Save this city to DB!
+        location: selectedCity
       });
-      updateUser({ ...user, location: selectedCity }); // Update frontend state
+      updateUser({ ...user, location: selectedCity });
       toast.success(`${selectedCity} saved as your default region!`);
     } catch (error) {
       toast.error('Failed to save region.');
@@ -68,47 +75,45 @@ export default function WeatherPage() {
   };
 
   useEffect(() => {
-    fetchWeather(selectedCity);
+    if (initialCity) {
+      fetchWeather(initialCity);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialCity]);
 
-  if (loading) {
-    return (
-      <div>
-        <PageHeader title="Weather Monitoring" subtitle="Real-time weather data and forecasts for your farm locations." breadcrumbs={[{ label: 'Weather' }]} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-          {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
-        </div>
-      </div>
-    );
-  }
+  const handleManualSearch = () => {
+    if (!searchQuery.trim()) {
+      toast.error('Please enter a city or region name');
+      return;
+    }
+    const cleanCity = searchQuery.trim().split(',')[0].trim();
+    setSelectedCity(cleanCity);
+    fetchWeather(cleanCity);
+  };
 
-  if (!weather || !weather.current) {
-    return <div>Failed to load weather data.</div>;
-  }
-
-  const c = weather.current;
-  const isSavedRegion = user?.location?.toLowerCase() === selectedCity.toLowerCase();
+  const isSavedRegion = Boolean(
+    user?.location && selectedCity && user.location.toLowerCase() === selectedCity.toLowerCase()
+  );
+  const c = weather?.current;
 
   return (
     <div style={{ position: 'relative' }}>
       <PageHeader
         title="Weather Monitoring"
-        subtitle="Real-time weather data and forecasts for your farm locations."
+        subtitle="Real-time agro-meteorological data, rain risk, and 7-day forecast for your farm location."
         breadcrumbs={[{ label: 'Weather' }]}
       />
 
       {/* Search Bar with Autocomplete Dropdown */}
-      <div style={{ position: 'relative', marginBottom: 20, display: 'flex', gap: 10 }}>
+      <div style={{ position: 'relative', marginBottom: 24, display: 'flex', gap: 10 }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <Input 
-            placeholder="Enter city or region (e.g., Visakha)" 
+            placeholder="Enter city, district or state (e.g., Punjab, Ludhiana, Coimbatore, Pune)" 
             value={searchQuery} 
             onChange={e => setSearchQuery(e.target.value)} 
             onKeyDown={e => {
               if (e.key === 'Enter') {
-                setSelectedCity(searchQuery);
-                fetchWeather(searchQuery);
+                handleManualSearch();
               }
             }}
           />
@@ -116,113 +121,138 @@ export default function WeatherPage() {
             <div style={{
               position: 'absolute', top: '100%', left: 0, right: 0,
               background: 'var(--bg-card)', border: '1px solid var(--border-color)',
-              borderRadius: 10, marginTop: 4, zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+              borderRadius: 10, marginTop: 4, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.25)'
             }}>
-              {suggestions.map((sug, i) => (
-                <div 
-                  key={i} 
-                  onClick={() => {
-                    setSearchQuery(sug.displayName);
-                    setSelectedCity(sug.displayName);
-                    fetchWeather(sug.displayName);
-                  }}
-                  style={{
-                    padding: '10px 14px', cursor: 'pointer',
-                    borderBottom: i < suggestions.length - 1 ? '1px solid var(--border-light)' : 'none',
-                    color: 'var(--text-primary)', fontSize: 14
-                  }}
-                >
-                  📍 {sug.displayName}
-                </div>
-              ))}
+              {suggestions.map((sug, i) => {
+                const label = sug.region ? `${sug.name}, ${sug.region}, ${sug.country}` : `${sug.name}, ${sug.country}`;
+                return (
+                  <div 
+                    key={i} 
+                    onClick={() => {
+                      setSearchQuery(label);
+                      setSelectedCity(sug.name);
+                      fetchWeather(sug.name);
+                    }}
+                    style={{
+                      padding: '11px 14px', cursor: 'pointer',
+                      borderBottom: i < suggestions.length - 1 ? '1px solid var(--border-color)' : 'none',
+                      color: 'var(--text-primary)', fontSize: 14,
+                      display: 'flex', alignItems: 'center', gap: 8
+                    }}
+                  >
+                    📍 {label}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
-        <Button leftIcon={<MdSearch />} onClick={() => { setSelectedCity(searchQuery); fetchWeather(searchQuery); }}>Search</Button>
+        <Button leftIcon={<MdSearch />} onClick={handleManualSearch}>Search</Button>
         
-        {/* NEW: Save Default Region Button */}
-        {!isSavedRegion && (
+        {/* Save Default Region Button */}
+        {selectedCity && !isSavedRegion && (
           <Button variant="outline" leftIcon={<MdSave />} onClick={saveDefaultRegion}>
             Set as Default
           </Button>
         )}
       </div>
 
-      {/* Current Weather Hero */}
-      <motion.div
-        className={styles.currentWeather}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <div className={styles.currentMain}>
-          <div>
-            <p className={styles.location}>📍 {c.cityName}</p>
-            <div className={styles.tempRow}>
-              <span className={styles.temp}>{Math.round(c.temperature)}°C</span>
+      {loading && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      )}
+
+      {!loading && !weather && (
+        <div style={{ textAlign: 'center', padding: '60px 20px', background: 'var(--bg-card)', borderRadius: 16, border: '1px dashed var(--border-color)', marginTop: 10 }}>
+          <MdLocationSearching size={54} style={{ opacity: 0.4, marginBottom: 14, color: 'var(--color-emerald)' }} />
+          <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Search Your Farm Region</h3>
+          <p style={{ color: 'var(--text-muted)', maxWidth: 500, margin: '0 auto 16px', lineHeight: 1.6 }}>
+            No default location is set for this account yet. Search your city or farm district above to view live agro-weather, humidity, and 7-day rainfall forecasts.
+          </p>
+        </div>
+      )}
+
+      {!loading && c && (
+        <>
+          {/* Current Weather Hero */}
+          <motion.div
+            className={styles.currentWeather}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className={styles.currentMain}>
               <div>
-                <p className={styles.condition}>{c.description}</p>
-                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>Feels like {Math.round(c.feelsLike)}°C</p>
-              </div>
-            </div>
-          </div>
-          <div className={styles.weatherIcon} style={{ fontSize: 64 }}>{c.emoji}</div>
-        </div>
-        <div className={styles.currentMetrics}>
-          {[
-            { icon: <MdWaterDrop />, label: 'Humidity', value: `${c.humidity}%` },
-            { icon: <MdAir />, label: 'Wind', value: `${Math.round(c.windSpeed)} km/h ${c.windDirection}` },
-            { icon: <MdCompress />, label: 'Pressure', value: `${Math.round(c.pressure)} hPa` },
-            { icon: <MdUmbrella />, label: 'Precip.', value: `${c.precipitation} mm` },
-          ].map(m => (
-            <div key={m.label} className={styles.metricItem}>
-              <span className={styles.metricIcon}>{m.icon}</span>
-              <span className={styles.metricLabel}>{m.label}</span>
-              <span className={styles.metricValue}>{m.value}</span>
-            </div>
-          ))}
-        </div>
-      </motion.div>
-
-      <div className={styles.grid}>
-        {/* 7-day Forecast */}
-        <Card>
-          <h3 style={{ fontWeight: 700, marginBottom: 16, color: 'var(--text-primary)' }}>7-Day Forecast</h3>
-          <div className={styles.forecastList}>
-            {weather.daily.map((d: any, i: number) => (
-              <motion.div
-                key={d.day}
-                className={styles.forecastDay}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06 }}
-              >
-                <span className={styles.forecastDayName}>{d.day}</span>
-                <span className={styles.forecastIcon} style={{ fontSize: 24 }}>{d.emoji}</span>
-                <span className={styles.forecastTemp}>{Math.round(d.high)}° / {Math.round(d.low)}°</span>
-                <div className={styles.rainBar}>
-                  <div className={styles.rainFill} style={{ width: `${d.rain}%` }} />
+                <p className={styles.location}>📍 {c.cityName}</p>
+                <div className={styles.tempRow}>
+                  <span className={styles.temp}>{Math.round(c.temperature)}°C</span>
+                  <div>
+                    <p className={styles.condition}>{c.description}</p>
+                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>Feels like {Math.round(c.feelsLike)}°C</p>
+                  </div>
                 </div>
-                <span className={styles.rainPct}>{d.rain}%</span>
-              </motion.div>
-            ))}
-          </div>
-        </Card>
+              </div>
+              <div className={styles.weatherIcon} style={{ fontSize: 64 }}>{c.emoji}</div>
+            </div>
+            <div className={styles.currentMetrics}>
+              {[
+                { icon: <MdWaterDrop size={20} />, label: 'Humidity', value: `${c.humidity}%` },
+                { icon: <MdAir size={20} />, label: 'Wind', value: `${c.windSpeed} km/h ${c.windDirection}` },
+                { icon: <MdCompress size={20} />, label: 'Pressure', value: `${c.pressure} hPa` },
+                { icon: <MdUmbrella size={20} />, label: 'Precip.', value: `${c.precipitation} mm` },
+              ].map(m => (
+                <div key={m.label} className={styles.metricItem}>
+                  <span className={styles.metricIcon}>{m.icon}</span>
+                  <div>
+                    <span className={styles.metricLabel}>{m.label}</span>
+                    <span className={styles.metricVal}>{m.value}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
 
-        {/* Temperature trend */}
-        <Card>
-          <h3 style={{ fontWeight: 700, marginBottom: 4, color: 'var(--text-primary)' }}>Today's Temperature</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>Hourly temperature trend (°C)</p>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={weather.hourly} margin={{ left: -20, right: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
-              <XAxis dataKey="time" tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval={2} />
-              <YAxis tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 10 }} />
-              <Line type="monotone" dataKey="temp" stroke="#D4AF37" strokeWidth={2.5} dot={{ fill: '#D4AF37', r: 4 }} name="Temp °C" />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
+          <div className={styles.contentGrid}>
+            {/* 7-Day Forecast */}
+            <Card>
+              <h3 className={styles.sectionTitle}>7-Day Forecast</h3>
+              <div className={styles.dailyList}>
+                {weather.daily?.map((d: any, i: number) => (
+                  <div key={i} className={styles.dailyRow}>
+                    <span className={styles.dailyDay}>{d.day}</span>
+                    <span className={styles.dailyEmoji}>{d.emoji}</span>
+                    <span className={styles.dailyTemps}>{Math.round(d.high)}° / {Math.round(d.low)}°</span>
+                    <div className={styles.rainBar}>
+                      <div className={styles.rainFill} style={{ width: `${d.rain}%` }} />
+                    </div>
+                    <span className={styles.rainPercent}>{d.rain}%</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Hourly Temperature Chart */}
+            <Card>
+              <h3 className={styles.sectionTitle}>Today's Temperature</h3>
+              <p className={styles.sectionSub}>Hourly temperature trend (°C)</p>
+              <div style={{ height: 260, marginTop: 16 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={weather.hourly || []}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                    <XAxis dataKey="time" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
+                    <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} domain={['auto', 'auto']} unit="°" />
+                    <Tooltip
+                      contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 8 }}
+                      labelStyle={{ color: 'var(--text-primary)' }}
+                    />
+                    <Line type="monotone" dataKey="temp" stroke="#D4AF37" strokeWidth={2.5} dot={{ fill: '#D4AF37', r: 3 }} name="Temp (°C)" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 }

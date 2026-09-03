@@ -25,14 +25,13 @@ export default function ProfilePage() {
   const { user, updateUser } = useAuth();
   const [editing, setEditing] = useState(false);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { name: user?.name ?? '', email: user?.email ?? '', phone: user?.phone ?? '', location: user?.location ?? '' },
   });
 
-    const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: FormData) => {
     try {
-      // 1. Call API. It returns the updated User object.
       const updatedUser = await authService.updateProfile({
         name: data.name,
         email: data.email,
@@ -40,19 +39,25 @@ export default function ProfilePage() {
         location: data.location,
       });
       
-      // 2. Update local state with the new data from the backend
+      const newLoc = updatedUser.location || data.location || '';
       updateUser({ 
         ...user, 
         name: updatedUser.name, 
         email: updatedUser.email,
         phone: updatedUser.phone, 
-        location: updatedUser.location 
+        location: newLoc
       });
       
-      toast.success('Profile updated successfully. If you changed your email, please log out and log back in with the new email.');
+      reset({
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone || '',
+        location: newLoc,
+      });
+
+      toast.success('Profile updated successfully.');
       setEditing(false);
     } catch (error: any) {
-      // Show the exact error from the backend if possible
       toast.error(error.response?.data?.message || 'Failed to update profile. Please try again.');
       console.error("Update profile error:", error);
     }

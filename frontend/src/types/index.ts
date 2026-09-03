@@ -9,6 +9,7 @@ export interface User {
   avatar?: string;
   phone?: string;
   location?: string;
+  region?: string;
   createdAt: string;
 }
 
@@ -28,6 +29,10 @@ export interface RegisterData {
   password: string;
   confirmPassword: string;
   role: UserRole;
+  location?: string;
+  phoneNumber?: string;
+  adminPasscode?: string;
+  specialization?: string;
 }
 
 // ─── Farm ─────────────────────────────────────────────────────────────────────

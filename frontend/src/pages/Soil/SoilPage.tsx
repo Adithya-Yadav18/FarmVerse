@@ -50,8 +50,8 @@ export default function SoilPage() {
     if (!newSoil.farmId) { toast.error('Please select a farm'); return; }
     
     const ph = Number(newSoil.phLevel);
-    if (!newSoil.phLevel || isNaN(ph) || ph < 3.0 || ph > 11.0) {
-      toast.error('pH must be within realistic agricultural range (3.0 to 11.0)');
+    if (!newSoil.phLevel || isNaN(ph) || ph < 0.0 || ph > 14.0) {
+      toast.error('pH must be between 0.0 and 14.0');
       return;
     }
 
@@ -268,7 +268,7 @@ export default function SoilPage() {
             </select>
           </div>
 
-          <Input label="pH Level (3.0 - 11.0)" type="number" step="0.1" min="3" max="11" placeholder="e.g. 6.5" value={newSoil.phLevel} onChange={e => setNewSoil({...newSoil, phLevel: e.target.value})} />
+          <Input label="pH Level (0.0 - 14.0)" type="number" step="0.1" min="0" max="14" placeholder="e.g. 6.5" value={newSoil.phLevel} onChange={e => setNewSoil({...newSoil, phLevel: e.target.value})} />
           <Input label="Nitrogen (%) (0 - 100)" type="number" step="1" min="0" max="100" placeholder="e.g. 45" value={newSoil.nitrogen} onChange={e => setNewSoil({...newSoil, nitrogen: e.target.value})} />
           <Input label="Phosphorus (%) (0 - 100)" type="number" step="1" min="0" max="100" placeholder="e.g. 30" value={newSoil.phosphorus} onChange={e => setNewSoil({...newSoil, phosphorus: e.target.value})} />
           <Input label="Potassium (%) (0 - 100)" type="number" step="1" min="0" max="100" placeholder="e.g. 60" value={newSoil.potassium} onChange={e => setNewSoil({...newSoil, potassium: e.target.value})} />

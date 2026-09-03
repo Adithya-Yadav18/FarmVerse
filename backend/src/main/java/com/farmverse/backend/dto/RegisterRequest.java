@@ -30,6 +30,9 @@ public class RegisterRequest {
 
     private String phoneNumber;
     private String region;
+    private String location; // Direct location support
+    private String adminPasscode; // Admin security gate
+    private String specialization; // Agronomist license/specialization
     private Integer farmingExperienceYears;
     private String preferredLanguage;
 }

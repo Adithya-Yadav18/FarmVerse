@@ -30,6 +30,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (storedToken && storedUser) {
       setTokenState(storedToken);
       setUser(storedUser);
+      // Fetch fresh profile from backend on page refresh
+      import('../services/authService').then(({ authService }) => {
+        authService.getProfile().then(freshUser => {
+          if (freshUser) {
+            setUser(prev => ({ ...prev, ...freshUser }));
+            setStoredUser({ ...storedUser, ...freshUser });
+          }
+        }).catch(err => {
+          console.debug("Session check:", err?.message);
+        });
+      });
     }
     setIsLoading(false);
   }, []);

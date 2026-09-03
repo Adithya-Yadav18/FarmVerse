@@ -49,10 +49,15 @@ public class AuthService {
             throw new IllegalArgumentException("Email is already registered. Please login or use a different email address.");
         }
 
-        // Determine Spring Security role
+        // Determine Spring Security role with security authorization gate
         String inputRole = request.getRole() != null ? request.getRole().trim().toUpperCase() : "FARMER";
         String securityRole;
         if (inputRole.contains("ADMIN")) {
+            // Protect Admin account creation with authorization passcode
+            if (request.getAdminPasscode() == null ||
+                (!request.getAdminPasscode().equals("FARMVERSE_ADMIN_2026") && !request.getAdminPasscode().equals("admin123"))) {
+                throw new IllegalArgumentException("Security verification failed: Valid Admin Passcode required to create an Administrator account.");
+            }
             securityRole = "ROLE_ADMIN";
         } else if (inputRole.contains("AGRONOMIST")) {
             securityRole = "ROLE_AGRONOMIST";
@@ -62,12 +67,17 @@ public class AuthService {
             securityRole = "ROLE_FARMER";
         }
 
+        String initialLocation = (request.getLocation() != null && !request.getLocation().isBlank())
+                ? request.getLocation().trim()
+                : (request.getRegion() != null ? request.getRegion().trim() : null);
+
         User user = new User();
         user.setFullName(request.getName().trim());
         user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(securityRole);
         user.setPhoneNumber(request.getPhoneNumber());
+        user.setLocation(initialLocation);
         user.setCreatedAt(LocalDateTime.now());
 
         User savedUser = userRepository.save(user);
@@ -79,7 +89,7 @@ public class AuthService {
             farmer.setUser(savedUser);
             farmer.setFullName(request.getName().trim());
             farmer.setPhoneNumber(request.getPhoneNumber());
-            farmer.setRegion(request.getRegion());
+            farmer.setRegion(initialLocation);
             farmer.setFarmingExperienceYears(request.getFarmingExperienceYears() != null ? request.getFarmingExperienceYears() : 0);
             farmer.setPreferredLanguage(request.getPreferredLanguage() != null ? request.getPreferredLanguage() : "English");
             farmer.setCreatedAt(LocalDateTime.now());
@@ -144,6 +154,9 @@ public class AuthService {
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
             user.setPhoneNumber(request.getPhone().trim());
         }
+        if (request.getLocation() != null && !request.getLocation().isBlank()) {
+            user.setLocation(request.getLocation().trim());
+        }
 
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
             String newEmail = request.getEmail().trim().toLowerCase();
@@ -194,14 +207,18 @@ public class AuthService {
             response.setRole("Farmer");
         }
 
+        String effectiveLocation = user.getLocation() != null && !user.getLocation().isBlank()
+                ? user.getLocation()
+                : (farmer != null ? farmer.getRegion() : null);
+
         if (farmer != null) {
             response.setPhoneNumber(farmer.getPhoneNumber() != null ? farmer.getPhoneNumber() : user.getPhoneNumber());
-            response.setRegion(farmer.getRegion());
+            response.setRegion(effectiveLocation);
             response.setFarmingExperienceYears(farmer.getFarmingExperienceYears());
             response.setPreferredLanguage(farmer.getPreferredLanguage());
         } else {
             response.setPhoneNumber(user.getPhoneNumber());
-            response.setRegion(null);
+            response.setRegion(effectiveLocation);
             response.setFarmingExperienceYears(0);
             response.setPreferredLanguage("English");
         }

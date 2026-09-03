@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { MdAdd, MdLocationOn, MdAgriculture, MdEdit, MdSecurity, MdVisibility } from 'react-icons/md';
@@ -19,6 +20,7 @@ import styles from './FarmsPage.module.css';
 import api from '../../services/api';
 
 export default function FarmsPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isAgronomist = user?.role === 'Agronomist';
   const isAdmin = user?.role === 'Admin';
@@ -37,6 +39,7 @@ export default function FarmsPage() {
   });
   
   const [editFarm, setEditFarm] = useState<Farm | null>(null);
+  const [inspectFarm, setInspectFarm] = useState<Farm | null>(null);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -246,7 +249,7 @@ export default function FarmsPage() {
                 </div>
               ) : (
                 <div className={styles.farmActions}>
-                  <Button variant="ghost" size="sm" style={{ flex: 1 }} leftIcon={<MdVisibility />}>
+                  <Button variant="outline" size="sm" style={{ flex: 1 }} leftIcon={<MdVisibility />} onClick={() => setInspectFarm(farm)}>
                     View Soil & Crops
                   </Button>
                 </div>
@@ -319,6 +322,64 @@ export default function FarmsPage() {
                 <option value="Inactive">Inactive</option>
                 <option value="Harvested">Harvested</option>
               </select>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* AGRONOMIST FIELD INSPECTION MODAL */}
+      <Modal 
+        isOpen={!!inspectFarm} 
+        onClose={() => setInspectFarm(null)} 
+        title={`Field Inspection: ${inspectFarm?.name || 'Farm'}`}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setInspectFarm(null)}>Close</Button>
+            <Button variant="outline" onClick={() => { setInspectFarm(null); navigate('/soil'); }}>
+              Inspect Soil Tests
+            </Button>
+            <Button onClick={() => { setInspectFarm(null); navigate('/crops'); }}>
+              View Crop Cycles
+            </Button>
+          </>
+        }
+      >
+        {inspectFarm && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, background: 'var(--bg-secondary)', padding: 16, borderRadius: 12 }}>
+              <div>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Location</span>
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: 2 }}>{inspectFarm.location || 'Unknown'}</p>
+              </div>
+              <div>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Registered Acreage</span>
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: 2 }}>{inspectFarm.area || 0} hectares</p>
+              </div>
+              <div>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Soil Classification</span>
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: 2 }}>{inspectFarm.soilType || 'Unclassified'}</p>
+              </div>
+              <div>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Plot Status</span>
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: 2 }}>{inspectFarm.status || 'Active'}</p>
+              </div>
+            </div>
+
+            <div>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>
+                Currently Planted Crops ({inspectFarm.crops?.length || 0})
+              </h4>
+              {inspectFarm.crops && inspectFarm.crops.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {inspectFarm.crops.map((c, idx) => (
+                    <span key={idx} style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'var(--color-emerald)', padding: '6px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600 }}>
+                      🌱 {c}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No active crop cycles currently logged for this plot.</p>
+              )}
             </div>
           </div>
         )}
