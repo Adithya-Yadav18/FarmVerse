@@ -51,6 +51,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [showAdminKey, setShowAdminKey] = useState(false);
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -219,18 +220,63 @@ export default function RegisterPage() {
 
             {/* Admin Security Gate Passcode */}
             {selectedRole === 'Admin' && (
-              <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: 12, borderRadius: 10, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <div style={{
+                background: 'rgba(212, 175, 55, 0.08)',
+                padding: '16px',
+                borderRadius: 12,
+                border: '1.5px solid rgba(212, 175, 55, 0.4)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-gold)', fontWeight: 700, fontSize: 13 }}>
+                    <MdKey size={18} /> Organization Security Verification
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setValue('adminPasscode', 'FARMVERSE_ADMIN_2026', { shouldValidate: true });
+                      toast.success('Admin passcode auto-filled: FARMVERSE_ADMIN_2026');
+                    }}
+                    style={{
+                      background: 'rgba(212, 175, 55, 0.25)',
+                      border: '1px solid var(--color-gold)',
+                      color: 'var(--color-gold)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      borderRadius: 6,
+                      padding: '4px 10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    🔑 Auto-Fill Dev Passcode
+                  </button>
+                </div>
+
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                  Admin accounts have system-wide privileges to manage farmers and audit data. An authorized Organization Passcode is required to prevent unauthorized account creation.
+                </p>
+
                 <Input
-                  label="Admin Security Passcode"
-                  type="password"
-                  placeholder="Enter organization passcode"
+                  label="Enter Admin Passcode"
+                  type={showAdminKey ? 'text' : 'password'}
+                  placeholder="e.g. FARMVERSE_ADMIN_2026"
                   leftIcon={<MdKey size={18} />}
+                  rightIcon={
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminKey(s => !s)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}
+                      aria-label={showAdminKey ? "Hide passcode" : "Show passcode"}
+                    >
+                      {showAdminKey ? <MdVisibilityOff size={18} /> : <MdVisibility size={18} />}
+                    </button>
+                  }
                   error={errors.adminPasscode?.message}
                   {...register('adminPasscode')}
                 />
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                  🔒 Creation of Administrator accounts is restricted. Default dev key: <code style={{ color: 'var(--color-emerald)' }}>FARMVERSE_ADMIN_2026</code>
-                </p>
               </div>
             )}
 

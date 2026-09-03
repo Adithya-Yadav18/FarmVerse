@@ -19,6 +19,54 @@ public class WeatherService {
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
 
+    // Comprehensive resolution of Indian States and Territories to their primary agricultural/capital meteorological stations
+    private static final java.util.Map<String, String[]> REGION_RESOLUTION_MAP = new java.util.HashMap<>();
+    static {
+        REGION_RESOLUTION_MAP.put("tamilnadu", new String[]{"Chennai", "Tamil Nadu"});
+        REGION_RESOLUTION_MAP.put("tamil nadu", new String[]{"Chennai", "Tamil Nadu"});
+        REGION_RESOLUTION_MAP.put("karnataka", new String[]{"Bengaluru", "Karnataka"});
+        REGION_RESOLUTION_MAP.put("maharashtra", new String[]{"Mumbai", "Maharashtra"});
+        REGION_RESOLUTION_MAP.put("andhrapradesh", new String[]{"Visakhapatnam", "Andhra Pradesh"});
+        REGION_RESOLUTION_MAP.put("andhra pradesh", new String[]{"Visakhapatnam", "Andhra Pradesh"});
+        REGION_RESOLUTION_MAP.put("telangana", new String[]{"Hyderabad", "Telangana"});
+        REGION_RESOLUTION_MAP.put("kerala", new String[]{"Kochi", "Kerala"});
+        REGION_RESOLUTION_MAP.put("punjab", new String[]{"Ludhiana", "Punjab"});
+        REGION_RESOLUTION_MAP.put("haryana", new String[]{"Gurugram", "Haryana"});
+        REGION_RESOLUTION_MAP.put("delhi", new String[]{"New Delhi", "Delhi NCR"});
+        REGION_RESOLUTION_MAP.put("newdelhi", new String[]{"New Delhi", "New Delhi"});
+        REGION_RESOLUTION_MAP.put("uttarpradesh", new String[]{"Lucknow", "Uttar Pradesh"});
+        REGION_RESOLUTION_MAP.put("uttar pradesh", new String[]{"Lucknow", "Uttar Pradesh"});
+        REGION_RESOLUTION_MAP.put("madhyapradesh", new String[]{"Bhopal", "Madhya Pradesh"});
+        REGION_RESOLUTION_MAP.put("madhya pradesh", new String[]{"Bhopal", "Madhya Pradesh"});
+        REGION_RESOLUTION_MAP.put("rajasthan", new String[]{"Jaipur", "Rajasthan"});
+        REGION_RESOLUTION_MAP.put("gujarat", new String[]{"Ahmedabad", "Gujarat"});
+        REGION_RESOLUTION_MAP.put("westbengal", new String[]{"Kolkata", "West Bengal"});
+        REGION_RESOLUTION_MAP.put("west bengal", new String[]{"Kolkata", "West Bengal"});
+        REGION_RESOLUTION_MAP.put("bihar", new String[]{"Patna", "Bihar"});
+        REGION_RESOLUTION_MAP.put("odisha", new String[]{"Bhubaneswar", "Odisha"});
+        REGION_RESOLUTION_MAP.put("orissa", new String[]{"Bhubaneswar", "Odisha"});
+        REGION_RESOLUTION_MAP.put("assam", new String[]{"Guwahati", "Assam"});
+        REGION_RESOLUTION_MAP.put("goa", new String[]{"Panaji", "Goa"});
+        REGION_RESOLUTION_MAP.put("himachalpradesh", new String[]{"Shimla", "Himachal Pradesh"});
+        REGION_RESOLUTION_MAP.put("himachal pradesh", new String[]{"Shimla", "Himachal Pradesh"});
+        REGION_RESOLUTION_MAP.put("uttarakhand", new String[]{"Dehradun", "Uttarakhand"});
+        REGION_RESOLUTION_MAP.put("jharkhand", new String[]{"Ranchi", "Jharkhand"});
+        REGION_RESOLUTION_MAP.put("chhattisgarh", new String[]{"Raipur", "Chhattisgarh"});
+        REGION_RESOLUTION_MAP.put("jammu and kashmir", new String[]{"Srinagar", "Jammu & Kashmir"});
+        REGION_RESOLUTION_MAP.put("jammukashmir", new String[]{"Srinagar", "Jammu & Kashmir"});
+        REGION_RESOLUTION_MAP.put("kashmir", new String[]{"Srinagar", "Kashmir"});
+        REGION_RESOLUTION_MAP.put("tripura", new String[]{"Agartala", "Tripura"});
+        REGION_RESOLUTION_MAP.put("meghalaya", new String[]{"Shillong", "Meghalaya"});
+        REGION_RESOLUTION_MAP.put("manipur", new String[]{"Imphal", "Manipur"});
+        REGION_RESOLUTION_MAP.put("nagaland", new String[]{"Kohima", "Nagaland"});
+        REGION_RESOLUTION_MAP.put("mizoram", new String[]{"Aizawl", "Mizoram"});
+        REGION_RESOLUTION_MAP.put("arunachalpradesh", new String[]{"Itanagar", "Arunachal Pradesh"});
+        REGION_RESOLUTION_MAP.put("arunachal pradesh", new String[]{"Itanagar", "Arunachal Pradesh"});
+        REGION_RESOLUTION_MAP.put("sikkim", new String[]{"Gangtok", "Sikkim"});
+        REGION_RESOLUTION_MAP.put("ladakh", new String[]{"Leh", "Ladakh"});
+        REGION_RESOLUTION_MAP.put("puducherry", new String[]{"Puducherry", "Puducherry"});
+    }
+
     public WeatherService() {
         this.webClient = WebClient.builder().build();
         this.objectMapper = new ObjectMapper();
@@ -26,16 +74,27 @@ public class WeatherService {
 
     public WeatherResponse getWeather(String city) {
         if (city == null || city.trim().length() < 2) {
-            throw new IllegalArgumentException("City name must be at least 2 characters long");
+            throw new IllegalArgumentException("City or state name must be at least 2 characters long");
         }
         try {
-            // Extract primary city if comma-separated e.g. "Birmingham, England, United Kingdom"
+            // Extract primary location if comma-separated e.g. "Salem, Tamil Nadu"
             String primaryCity = city.trim();
             if (primaryCity.contains(",")) {
                 primaryCity = primaryCity.split(",")[0].trim();
             }
 
-            String encodedCity = java.net.URLEncoder.encode(primaryCity, java.nio.charset.StandardCharsets.UTF_8);
+            // Check if user entered an Indian State or Territory
+            String normalizedKey = primaryCity.toLowerCase().replaceAll("[^a-z0-9]", "");
+            String queryForGeocoding = primaryCity;
+            String overrideDisplayName = null;
+
+            if (REGION_RESOLUTION_MAP.containsKey(normalizedKey)) {
+                String[] resolved = REGION_RESOLUTION_MAP.get(normalizedKey);
+                queryForGeocoding = resolved[0]; // Hub city
+                overrideDisplayName = resolved[1]; // State display name
+            }
+
+            String encodedCity = java.net.URLEncoder.encode(queryForGeocoding, java.nio.charset.StandardCharsets.UTF_8);
             // 1. Geocode the city name (request top 10 to prioritize Indian regions)
             String geoUrl = String.format("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=10&language=en&format=json", encodedCity);
             JsonNode geoResponse = objectMapper.readTree(webClient.get().uri(geoUrl).retrieve().bodyToMono(String.class).block());
@@ -48,7 +107,7 @@ public class WeatherService {
                 geoResponse = objectMapper.readTree(webClient.get().uri(fallbackUrl).retrieve().bodyToMono(String.class).block());
                 results = geoResponse.path("results");
                 if (results.isMissingNode() || results.size() == 0) {
-                    throw new IllegalArgumentException("City not found: " + city);
+                    throw new IllegalArgumentException("Location not found: " + city + ". Try searching with a nearby city or district.");
                 }
             }
 
@@ -65,7 +124,7 @@ public class WeatherService {
 
             double lat = selectedNode.path("latitude").asDouble();
             double lon = selectedNode.path("longitude").asDouble();
-            String cityName = selectedNode.path("name").asText();
+            String cityName = overrideDisplayName != null ? overrideDisplayName : selectedNode.path("name").asText();
 
             // 2. Fetch Weather Data (Changed to forecast_days=8 so we can skip today and show next 7)
             String forecastUrl = String.format(
@@ -136,9 +195,11 @@ public class WeatherService {
 
             return response;
 
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException("Failed to fetch weather data.");
+            throw new RuntimeException("Failed to fetch weather data: " + e.getMessage());
         }
     }
 
@@ -152,6 +213,19 @@ public class WeatherService {
             JsonNode geoResponse = objectMapper.readTree(webClient.get().uri(geoUrl).retrieve().bodyToMono(String.class).block());
             List<CitySuggestion> indianList = new ArrayList<>();
             List<CitySuggestion> otherList = new ArrayList<>();
+
+            // Prepend matching Indian State/Territory if query matches
+            String qLower = query.toLowerCase().trim().replaceAll("[^a-z0-9]", "");
+            for (java.util.Map.Entry<String, String[]> entry : REGION_RESOLUTION_MAP.entrySet()) {
+                if (entry.getKey().contains(qLower) || (qLower.length() >= 3 && entry.getKey().startsWith(qLower))) {
+                    CitySuggestion stateSug = new CitySuggestion();
+                    stateSug.setName(entry.getValue()[1]);
+                    stateSug.setRegion(entry.getValue()[0] + " Hub");
+                    stateSug.setCountry("India");
+                    indianList.add(stateSug);
+                    break;
+                }
+            }
 
             if (!geoResponse.path("results").isMissingNode()) {
                 for (JsonNode node : geoResponse.path("results")) {

@@ -54,8 +54,8 @@ public class AuthService {
         String securityRole;
         if (inputRole.contains("ADMIN")) {
             // Protect Admin account creation with authorization passcode
-            if (request.getAdminPasscode() == null ||
-                (!request.getAdminPasscode().equals("FARMVERSE_ADMIN_2026") && !request.getAdminPasscode().equals("admin123"))) {
+            String p = request.getAdminPasscode() != null ? request.getAdminPasscode().trim() : "";
+            if (!p.equals("FARMVERSE_ADMIN_2026") && !p.equals("admin123")) {
                 throw new IllegalArgumentException("Security verification failed: Valid Admin Passcode required to create an Administrator account.");
             }
             securityRole = "ROLE_ADMIN";

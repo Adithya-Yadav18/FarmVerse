@@ -33,4 +33,9 @@ public class WeatherController {
     public ResponseEntity<List<CitySuggestion>> searchCities(@RequestParam String q) {
         return ResponseEntity.ok(weatherService.searchCities(q));
     }
+
+    @org.springframework.web.bind.annotation.ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<?> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(java.util.Map.of("message", ex.getMessage()));
+    }
 }
