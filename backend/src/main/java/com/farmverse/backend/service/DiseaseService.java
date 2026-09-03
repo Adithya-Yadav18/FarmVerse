@@ -104,6 +104,13 @@ public class DiseaseService {
                 resolvedCropName, request.getNotes(), request.getImageUrl()
         );
 
+        // If AI Vision visually recognized the actual crop from the specimen photo, prioritize it!
+        if (aiResult.cropIdentified != null && !aiResult.cropIdentified.isBlank() 
+                && !aiResult.cropIdentified.equalsIgnoreCase("General") 
+                && !aiResult.cropIdentified.equalsIgnoreCase("General Crop")) {
+            resolvedCropName = aiResult.cropIdentified;
+        }
+
         DiseaseDetection detection = new DiseaseDetection();
         detection.setFarm(farm);
         detection.setCrop(crop);

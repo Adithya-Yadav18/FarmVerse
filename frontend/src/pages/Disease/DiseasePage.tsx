@@ -514,7 +514,7 @@ export default function DiseasePage() {
                 setScanForm({ ...scanForm, cropId: e.target.value, cropName: c ? c.name : '' });
               }}
             >
-              <option value="">Select crop or enter manually...</option>
+              <option value="">Auto-Detect Crop Species from Photo (AI Vision)</option>
               {crops.map(c => (
                 <option key={c.id} value={c.id}>{c.name} ({c.variety || 'Cycle'})</option>
               ))}
@@ -523,8 +523,8 @@ export default function DiseasePage() {
 
           {!scanForm.cropId && (
             <Input
-              label="Or Specify Crop Name"
-              placeholder="e.g. Tomato, Potato, Wheat, Rice, Cotton, Chili"
+              label="Or Optional Crop Name (Leave blank for AI auto-identification)"
+              placeholder="e.g. Leave blank or enter Tomato, Potato, Wheat, Rice..."
               value={scanForm.cropName}
               onChange={e => setScanForm({ ...scanForm, cropName: e.target.value })}
             />
