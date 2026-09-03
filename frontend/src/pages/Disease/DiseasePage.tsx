@@ -473,6 +473,7 @@ export default function DiseasePage() {
         isOpen={showUploadModal}
         onClose={() => { if (!scanning) setShowUploadModal(false); }}
         title="AI Crop Leaf Pathology Scanner"
+        size="lg"
         footer={
           <>
             <Button variant="ghost" disabled={scanning} onClick={() => setShowUploadModal(false)}>Cancel</Button>
@@ -570,8 +571,8 @@ export default function DiseasePage() {
                 </p>
               </div>
             ) : scanForm.imageUrl ? (
-              <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-color)', maxHeight: 180, display: 'flex', justifyContent: 'center', background: '#000' }}>
-                <img src={scanForm.imageUrl} alt="Preview" style={{ maxHeight: 180, objectFit: 'contain' }} />
+              <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-color)', maxHeight: 200, display: 'flex', justifyContent: 'center', background: '#000' }}>
+                <img src={scanForm.imageUrl} alt="Preview" style={{ maxHeight: 200, objectFit: 'contain' }} />
                 <button
                   type="button"
                   onClick={() => setScanForm(prev => ({ ...prev, imageUrl: '' }))}
@@ -582,9 +583,15 @@ export default function DiseasePage() {
               </div>
             ) : (
               <label className={styles.dropzone}>
-                <MdUpload size={28} style={{ color: 'var(--color-emerald)', marginBottom: 6 }} />
-                <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>Click to upload leaf photo</p>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Supports PNG, JPG, or camera captures up to 5MB</p>
+                <div className={styles.dropzoneIcon}>
+                  <MdUpload />
+                </div>
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, margin: 0 }}>
+                  Click to upload leaf photo
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, margin: 0 }}>
+                  Supports PNG, JPG, or camera captures up to 5MB
+                </p>
                 <input type="file" accept="image/*" onChange={handleImageFile} style={{ display: 'none' }} />
               </label>
             )}
