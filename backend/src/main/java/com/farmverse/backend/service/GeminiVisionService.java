@@ -6,9 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 
 @Service
 public class GeminiVisionService {
@@ -21,7 +19,6 @@ public class GeminiVisionService {
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
-    private final Random random = new Random();
 
     public GeminiVisionService() {
         this.webClient = WebClient.builder().build();
