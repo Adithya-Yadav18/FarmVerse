@@ -25,13 +25,17 @@ public class WeatherService {
     }
 
     public WeatherResponse getWeather(String city) {
+        if (city == null || city.trim().length() < 2) {
+            throw new IllegalArgumentException("City name must be at least 2 characters long");
+        }
         try {
+            String encodedCity = java.net.URLEncoder.encode(city.trim(), java.nio.charset.StandardCharsets.UTF_8);
             // 1. Geocode the city name to get Lat/Lon
-            String geoUrl = String.format("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1&language=en&format=json", city);
+            String geoUrl = String.format("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1&language=en&format=json", encodedCity);
             JsonNode geoResponse = objectMapper.readTree(webClient.get().uri(geoUrl).retrieve().bodyToMono(String.class).block());
 
             if (geoResponse.path("results").isMissingNode() || geoResponse.path("results").size() == 0) {
-                throw new RuntimeException("City not found");
+                throw new IllegalArgumentException("City not found: " + city);
             }
 
             double lat = geoResponse.path("results").get(0).path("latitude").asDouble();

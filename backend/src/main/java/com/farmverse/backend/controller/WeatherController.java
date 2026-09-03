@@ -24,12 +24,8 @@ public class WeatherController {
     // GET /api/weather?city=Bangalore
     @GetMapping
     public ResponseEntity<WeatherResponse> getWeather(@RequestParam String city) {
-        try {
-            WeatherResponse response = weatherService.getWeather(city);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(null);
-        }
+        WeatherResponse response = weatherService.getWeather(city);
+        return ResponseEntity.ok(response);
     }
 
     // GET /api/weather/search?q=Visakha

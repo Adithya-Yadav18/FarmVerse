@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { MdAdd, MdGrass } from 'react-icons/md';
+import { MdAdd, MdGrass, MdSecurity } from 'react-icons/md';
 import { PageHeader } from '../../components/ui/PageHeader/PageHeader';
 import { Button } from '../../components/ui/Button/Button';
 import { SearchFilter } from '../../components/ui/SearchFilter/SearchFilter';
@@ -12,11 +12,17 @@ import { Modal } from '../../components/ui/Modal/Modal';
 import { Input } from '../../components/ui/Input/Input';
 import { usePagination } from '../../hooks/usePagination';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useAuth } from '../../context/AuthContext';
 import { formatDate } from '../../utils';
 import type { Crop, Farm } from '../../types';
 import api from '../../services/api';
 
 export default function CropsPage() {
+  const { user } = useAuth();
+  const isAgronomist = user?.role === 'Agronomist';
+  const isAdmin = user?.role === 'Admin';
+  const canManageCrops = !isAgronomist || isAdmin;
+
   const [crops, setCrops] = useState<Crop[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,8 +46,9 @@ export default function CropsPage() {
         ]);
         setCrops(cropsRes.data);
         setFarms(farmsRes.data);
-      } catch (error) {
-        toast.error('Failed to load data');
+      } catch (error: any) {
+        const msg = error.response?.data?.message || 'Failed to load crop records';
+        toast.error(msg);
       } finally {
         setLoading(false);
       }
@@ -59,43 +66,109 @@ export default function CropsPage() {
   const paged = filtered.slice((page - 1) * limit, page * limit) as unknown as Record<string, unknown>[];
 
   const handleAdd = async () => {
-    if (!newCrop.name || !newCrop.farmId) { toast.error('Crop name and Farm are required'); return; }
+    const name = (newCrop.name || '').trim();
+    const variety = (newCrop.variety || '').trim();
+    const farmId = newCrop.farmId;
+    const areaNum = Number(newCrop.area);
+    const planted = newCrop.plantedDate;
+    const harvest = newCrop.expectedHarvestDate;
+
+    if (name.length < 2 || name.length > 100) {
+      toast.error('Crop name must be between 2 and 100 characters');
+      return;
+    }
+    if (variety.length < 1 || variety.length > 100) {
+      toast.error('Variety is required');
+      return;
+    }
+    if (!farmId) {
+      toast.error('Please select an active farm');
+      return;
+    }
+    if (isNaN(areaNum) || areaNum <= 0) {
+      toast.error('Crop area must be greater than 0 hectares');
+      return;
+    }
+    if (!planted) {
+      toast.error('Planting date is required');
+      return;
+    }
+    if (!harvest) {
+      toast.error('Expected harvest date is required');
+      return;
+    }
+    if (new Date(harvest) < new Date(planted)) {
+      toast.error('Expected harvest date cannot be before planting date');
+      return;
+    }
+
+    // Capacity verification
+    const chosenFarm = farms.find(f => String(f.id) === String(farmId));
+    if (chosenFarm && chosenFarm.area && areaNum > chosenFarm.area) {
+      toast.error(`Crop area (${areaNum} ha) exceeds total farm acreage (${chosenFarm.area} ha)`);
+      return;
+    }
+
     try {
       const response = await api.post('/crops', {
-        cropName: newCrop.name,
-        variety: newCrop.variety,
-        plantingDate: newCrop.plantedDate,
-        expectedHarvestDate: newCrop.expectedHarvestDate,
-        status: newCrop.status,
-        area: Number(newCrop.area) || 0,
-        farmId: Number(newCrop.farmId)
+        cropName: name,
+        variety,
+        plantingDate: planted,
+        expectedHarvestDate: harvest,
+        status: newCrop.status || 'Planted',
+        area: areaNum,
+        farmId: Number(farmId)
       });
       setCrops(prev => [response.data, ...prev]);
-      toast.success('Crop added successfully');
+      toast.success('Crop registered successfully');
       setShowAddModal(false);
       setNewCrop({ status: 'Planted', area: 0 });
-    } catch (error) {
-      toast.error('Failed to add crop');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.response?.data?.error || 'Failed to add crop';
+      toast.error(msg);
     }
   };
 
   const handleEditSave = async () => {
     if (!editCrop) return;
-    if (!editCrop.name) { toast.error('Crop name is required'); return; }
+    const name = (editCrop.name || '').trim();
+    const variety = (editCrop.variety || '').trim();
+    const areaNum = Number(editCrop.area);
+    const planted = editCrop.plantedDate;
+    const harvest = editCrop.expectedHarvestDate;
+
+    if (name.length < 2 || name.length > 100) {
+      toast.error('Crop name must be between 2 and 100 characters');
+      return;
+    }
+    if (variety.length < 1 || variety.length > 100) {
+      toast.error('Variety is required');
+      return;
+    }
+    if (isNaN(areaNum) || areaNum <= 0) {
+      toast.error('Crop area must be greater than 0 hectares');
+      return;
+    }
+    if (planted && harvest && new Date(harvest) < new Date(planted)) {
+      toast.error('Expected harvest date cannot be before planting date');
+      return;
+    }
+
     try {
       await api.put(`/crops/${editCrop.id}`, {
-        cropName: editCrop.name,
-        variety: editCrop.variety,
-        plantingDate: editCrop.plantedDate,
-        expectedHarvestDate: editCrop.expectedHarvestDate,
+        cropName: name,
+        variety,
+        plantingDate: planted,
+        expectedHarvestDate: harvest,
         status: editCrop.status,
-        area: Number(editCrop.area) || 0,
+        area: areaNum,
       });
-      setCrops(prev => prev.map(f => f.id === editCrop.id ? editCrop : f));
+      setCrops(prev => prev.map(f => f.id === editCrop.id ? { ...editCrop, name, variety, area: areaNum } : f));
       toast.success('Crop updated successfully');
       setEditCrop(null);
-    } catch (error) {
-      toast.error('Failed to update crop');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.response?.data?.error || 'Failed to update crop';
+      toast.error(msg);
     }
   };
 
@@ -104,9 +177,10 @@ export default function CropsPage() {
     try {
       await api.delete(`/crops/${deleteId}`);
       setCrops(c => c.filter(x => String(x.id) !== deleteId));
-      toast.success('Crop deleted');
-    } catch (error) {
-      toast.error('Failed to delete crop');
+      toast.success('Crop cycle removed');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Failed to delete crop';
+      toast.error(msg);
     } finally {
       setDeleteId(null);
     }
@@ -123,10 +197,14 @@ export default function CropsPage() {
     {
       key: 'actions', label: 'Actions',
       render: (_, row) => (
-        <div style={{ display: 'flex', gap: 6 }}>
-          <Button variant="ghost" size="sm" onClick={() => setEditCrop(row as unknown as Crop)}>Edit</Button>
-          <Button variant="danger" size="sm" onClick={() => setDeleteId(row.id as string)}>Delete</Button>
-        </div>
+        canManageCrops ? (
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Button variant="ghost" size="sm" onClick={() => setEditCrop(row as unknown as Crop)}>Edit</Button>
+            <Button variant="danger" size="sm" onClick={() => setDeleteId(row.id as string)}>Delete</Button>
+          </div>
+        ) : (
+          <Badge variant="info">Surveillance</Badge>
+        )
       ),
     },
   ];
@@ -134,10 +212,22 @@ export default function CropsPage() {
   return (
     <div>
       <PageHeader
-        title="Crop Management"
-        subtitle="Track and manage all your crop cycles."
+        title={isAgronomist ? "Crop Cycle Surveillance" : "Crop Management"}
+        subtitle={
+          isAgronomist
+            ? "Monitoring crop phenology, variety performance, and harvest timelines across fields."
+            : "Track and manage all your active crop cycles, planting dates, and harvest projections."
+        }
         breadcrumbs={[{ label: 'Crops' }]}
-        actions={<Button leftIcon={<MdAdd />} onClick={() => setShowAddModal(true)}>Add Crop</Button>}
+        actions={
+          canManageCrops ? (
+            <Button leftIcon={<MdAdd />} onClick={() => setShowAddModal(true)}>Add Crop</Button>
+          ) : (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.12)', color: 'var(--color-primary, #3B82F6)', padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+              <MdSecurity size={16} /> Agronomist Field View
+            </div>
+          )
+        }
       />
 
       <SearchFilter
@@ -172,12 +262,12 @@ export default function CropsPage() {
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        message="Delete this crop record permanently?"
+        message="Delete this crop record permanently? This action cannot be undone."
         confirmLabel="Delete Crop"
       />
 
       {/* ADD CROP MODAL */}
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Crop"
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Register New Crop Cycle"
         footer={<><Button variant="ghost" onClick={() => setShowAddModal(false)}>Cancel</Button><Button onClick={handleAdd}>Add Crop</Button></>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Input label="Crop Name" placeholder="e.g. Wheat" value={newCrop.name || ''} onChange={e => setNewCrop({...newCrop, name: e.target.value})} />
@@ -191,7 +281,7 @@ export default function CropsPage() {
               onChange={e => setNewCrop({...newCrop, farmId: e.target.value})}
             >
               <option value="" disabled>Select a farm...</option>
-              {farms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              {farms.map(f => <option key={f.id} value={f.id}>{f.name} ({f.area || 0} ha)</option>)}
             </select>
           </div>
 
@@ -200,7 +290,7 @@ export default function CropsPage() {
           <Input label="Expected Harvest Date" type="date" value={newCrop.expectedHarvestDate ? newCrop.expectedHarvestDate.split('T')[0] : ''} onChange={e => setNewCrop({...newCrop, expectedHarvestDate: e.target.value})} />
           
           <div>
-            <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>Status</label>
+            <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>Growth Stage / Status</label>
             <select 
               style={{ width: '100%', padding: '11px 14px', border: '1.5px solid var(--border-color)', borderRadius: 10, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14 }}
               value={newCrop.status || 'Planted'} 
@@ -228,7 +318,7 @@ export default function CropsPage() {
             <Input label="Expected Harvest Date" type="date" value={editCrop.expectedHarvestDate ? editCrop.expectedHarvestDate.split('T')[0] : ''} onChange={e => setEditCrop({...editCrop, expectedHarvestDate: e.target.value})} />
             
             <div>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>Status</label>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>Growth Stage / Status</label>
               <select 
                 style={{ width: '100%', padding: '11px 14px', border: '1.5px solid var(--border-color)', borderRadius: 10, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14 }}
                 value={editCrop.status || 'Planted'} 

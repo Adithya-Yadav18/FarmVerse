@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { MdAdd, MdLocationOn, MdAgriculture, MdEdit } from 'react-icons/md';
+import { MdAdd, MdLocationOn, MdAgriculture, MdEdit, MdSecurity, MdVisibility } from 'react-icons/md';
 import { PageHeader } from '../../components/ui/PageHeader/PageHeader';
 import { Button } from '../../components/ui/Button/Button';
 import { SearchFilter } from '../../components/ui/SearchFilter/SearchFilter';
@@ -13,11 +13,17 @@ import { Input } from '../../components/ui/Input/Input';
 import { SkeletonCard } from '../../components/ui/Skeleton/Skeleton';
 import { usePagination } from '../../hooks/usePagination';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useAuth } from '../../context/AuthContext';
 import type { Farm } from '../../types';
 import styles from './FarmsPage.module.css';
 import api from '../../services/api';
 
 export default function FarmsPage() {
+  const { user } = useAuth();
+  const isAgronomist = user?.role === 'Agronomist';
+  const isAdmin = user?.role === 'Admin';
+  const canManageFarms = !isAgronomist || isAdmin;
+
   const [farms, setFarms] = useState<Farm[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -26,7 +32,9 @@ export default function FarmsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newFarm, setNewFarm] = useState<{ name: string; location: string; area: string; soilType: string; status: Farm['status'] }>({ name: '', location: '', area: '', soilType: '', status: 'Active' });
+  const [newFarm, setNewFarm] = useState<{ name: string; location: string; area: string; soilType: string; status: Farm['status'] }>({
+    name: '', location: '', area: '', soilType: '', status: 'Active'
+  });
   
   const [editFarm, setEditFarm] = useState<Farm | null>(null);
 
@@ -37,10 +45,10 @@ export default function FarmsPage() {
       try {
         setLoading(true);
         const response = await api.get('/farms');
-        // Filter out any completely null objects just in case
         setFarms(response.data.filter((f: Farm) => f !== null));
-      } catch (error) {
-        toast.error('Failed to load farms from database');
+      } catch (error: any) {
+        const msg = error.response?.data?.message || 'Failed to load farms from database';
+        toast.error(msg);
       } finally {
         setLoading(false);
       }
@@ -49,7 +57,6 @@ export default function FarmsPage() {
   }, []);
 
   const filtered = farms.filter(f => {
-    // Bulletproof null checks
     const farmName = f.name ? String(f.name).toLowerCase() : "";
     const farmLoc = f.location ? String(f.location).toLowerCase() : "";
     const farmStatus = f.status ? String(f.status) : "";
@@ -70,62 +77,131 @@ export default function FarmsPage() {
       await api.delete(`/farms/${deleteId}`);
       setFarms(prev => prev.filter(f => String(f.id) !== deleteId));
       toast.success('Farm deleted successfully');
-    } catch (error) {
-      toast.error('Failed to delete farm');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Failed to delete farm';
+      toast.error(msg);
     } finally {
       setDeleteId(null);
     }
   };
 
   const handleAdd = async () => {
-    if (!newFarm.name.trim()) { toast.error('Farm name is required'); return; }
+    const name = newFarm.name.trim();
+    const location = newFarm.location.trim();
+    const areaNum = Number(newFarm.area);
+    const soilType = newFarm.soilType.trim();
+
+    if (name.length < 2 || name.length > 100) {
+      toast.error('Farm name must be between 2 and 100 characters');
+      return;
+    }
+    if (location.length < 2 || location.length > 150) {
+      toast.error('Location must be between 2 and 150 characters');
+      return;
+    }
+    if (isNaN(areaNum) || areaNum <= 0) {
+      toast.error('Farm area must be greater than 0 hectares');
+      return;
+    }
+    if (areaNum > 100000) {
+      toast.error('Farm area cannot exceed 100,000 hectares');
+      return;
+    }
+    if (soilType.length < 2 || soilType.length > 50) {
+      toast.error('Soil type must be between 2 and 50 characters');
+      return;
+    }
+
     try {
       const response = await api.post('/farms', {
-        name: newFarm.name,
-        location: newFarm.location,
-        area: Number(newFarm.area) || 0,
-        soilType: newFarm.soilType,
+        name,
+        location,
+        area: areaNum,
+        soilType,
         status: newFarm.status
       });
       setFarms(prev => [response.data, ...prev]);
-      toast.success('Farm added successfully');
+      toast.success('Farm registered successfully');
       setShowAddModal(false);
       setNewFarm({ name: '', location: '', area: '', soilType: '', status: 'Active' });
-    } catch (error) {
-      toast.error('Failed to add farm');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.response?.data?.error || 'Failed to add farm';
+      toast.error(msg);
     }
   };
 
   const handleEditSave = async () => {
     if (!editFarm) return;
-    if (!editFarm.name.trim()) { toast.error('Farm name is required'); return; }
+    const name = (editFarm.name || '').trim();
+    const location = (editFarm.location || '').trim();
+    const areaNum = Number(editFarm.area);
+    const soilType = (editFarm.soilType || '').trim();
+
+    if (name.length < 2 || name.length > 100) {
+      toast.error('Farm name must be between 2 and 100 characters');
+      return;
+    }
+    if (location.length < 2 || location.length > 150) {
+      toast.error('Location must be between 2 and 150 characters');
+      return;
+    }
+    if (isNaN(areaNum) || areaNum <= 0) {
+      toast.error('Farm area must be greater than 0 hectares');
+      return;
+    }
+    if (areaNum > 100000) {
+      toast.error('Farm area cannot exceed 100,000 hectares');
+      return;
+    }
+    if (soilType.length < 2 || soilType.length > 50) {
+      toast.error('Soil type must be between 2 and 50 characters');
+      return;
+    }
+
     try {
-      await api.put(`/farms/${editFarm.id}`, editFarm);
-      setFarms(prev => prev.map(f => f.id === editFarm.id ? editFarm : f));
+      await api.put(`/farms/${editFarm.id}`, {
+        name,
+        location,
+        area: areaNum,
+        soilType,
+        status: editFarm.status
+      });
+      setFarms(prev => prev.map(f => f.id === editFarm.id ? { ...editFarm, name, location, area: areaNum, soilType } : f));
       toast.success('Farm updated successfully');
       setEditFarm(null);
-    } catch (error) {
-      toast.error('Failed to update farm');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.response?.data?.error || 'Failed to update farm';
+      toast.error(msg);
     }
   };
 
   return (
     <div>
       <PageHeader
-        title="Farms"
-        subtitle="Manage all your registered farms and fields."
+        title={isAgronomist ? "Farm & Field Surveillance" : "Farms & Fields"}
+        subtitle={
+          isAgronomist
+            ? "Inspecting all registered agricultural plots, acreage, and soil baselines across linked farms."
+            : "Manage all your registered farms, boundaries, and soil baselines."
+        }
         breadcrumbs={[{ label: 'Farms' }]}
         actions={
-          <Button leftIcon={<MdAdd />} onClick={() => setShowAddModal(true)}>
-            Add Farm
-          </Button>
+          canManageFarms ? (
+            <Button leftIcon={<MdAdd />} onClick={() => setShowAddModal(true)}>
+              Add Farm
+            </Button>
+          ) : (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.12)', color: 'var(--color-primary, #3B82F6)', padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+              <MdSecurity size={16} /> Agronomist Inspection View
+            </div>
+          )
         }
       />
 
       <SearchFilter
         searchValue={search}
         onSearchChange={setSearch}
-        placeholder="Search farms..."
+        placeholder="Search farms by name or location..."
         filters={[{
           key: 'status', label: 'Status',
           options: [{ label: 'Active', value: 'Active' }, { label: 'Inactive', value: 'Inactive' }, { label: 'Harvested', value: 'Harvested' }],
@@ -147,7 +223,6 @@ export default function FarmsPage() {
             >
               <div className={styles.farmCardHeader}>
                 <div className={styles.farmIcon}><MdAgriculture size={22} /></div>
-                {/* Added fallback string "Unknown" */}
                 <Badge variant={statusVariant(farm.status || 'Unknown')} dot>{farm.status || 'Unknown'}</Badge>
               </div>
               <h3 className={styles.farmName}>{farm.name || 'Unnamed Farm'}</h3>
@@ -161,12 +236,21 @@ export default function FarmsPage() {
                   <span key={c} className={styles.cropTag}>{c}</span>
                 ))}
               </div>
-              <div className={styles.farmActions}>
-                <Button variant="outline" size="sm" style={{ flex: 1 }} leftIcon={<MdEdit />} onClick={() => setEditFarm(farm)}>
-                  Edit
-                </Button>
-                <Button variant="danger" size="sm" onClick={() => setDeleteId(String(farm.id))}>Delete</Button>
-              </div>
+
+              {canManageFarms ? (
+                <div className={styles.farmActions}>
+                  <Button variant="outline" size="sm" style={{ flex: 1 }} leftIcon={<MdEdit />} onClick={() => setEditFarm(farm)}>
+                    Edit
+                  </Button>
+                  <Button variant="danger" size="sm" onClick={() => setDeleteId(String(farm.id))}>Delete</Button>
+                </div>
+              ) : (
+                <div className={styles.farmActions}>
+                  <Button variant="ghost" size="sm" style={{ flex: 1 }} leftIcon={<MdVisibility />}>
+                    View Soil & Crops
+                  </Button>
+                </div>
+              )}
             </motion.div>
           ))
         }
@@ -175,7 +259,7 @@ export default function FarmsPage() {
       {!loading && filtered.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
           <MdAgriculture size={48} style={{ marginBottom: 12, opacity: 0.3 }} />
-          <p>No farms found. Try adjusting your search or add a new farm.</p>
+          <p>No farms found. Try adjusting your search or register a new farm.</p>
         </div>
       )}
 
@@ -194,7 +278,7 @@ export default function FarmsPage() {
         confirmLabel="Delete Farm"
       />
 
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Farm"
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Register New Farm"
         footer={<><Button variant="ghost" onClick={() => setShowAddModal(false)}>Cancel</Button><Button onClick={handleAdd}>Add Farm</Button></>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Input label="Farm Name" placeholder="e.g. North Valley Farm" value={newFarm.name} onChange={e => setNewFarm({...newFarm, name: e.target.value})} />
