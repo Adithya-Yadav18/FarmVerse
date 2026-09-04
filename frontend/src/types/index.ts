@@ -127,7 +127,11 @@ export interface IrrigationSchedule {
   nextRun?: string;
 }
 
-// ─── Disease Detection ────────────────────────────────────────────────────────
+// ─── Disease Detection & Tracking ─────────────────────────────────────────────
+export type ContainmentStatus = 'CONTAINED' | 'SPREADING' | 'QUARANTINED' | 'ERADICATED';
+export type RecoveryStage = 'ACTIVE_INFECTION' | 'UNDER_TREATMENT' | 'SIGNIFICANT_RECOVERY' | 'RESOLVED_HEALTHY';
+export type TreatmentType = 'CHEMICAL_FUNGICIDE' | 'ORGANIC_BIOCONTROL' | 'CULTURAL_PRUNING' | 'NUTRITIONAL_BOOST';
+
 export interface DiseaseDetection {
   id: string;
   cropId?: string;
@@ -144,11 +148,42 @@ export interface DiseaseDetection {
   treatment: string;
   status: 'Detected' | 'Treating' | 'Resolved';
   imageUrl?: string;
+  containmentStatus?: ContainmentStatus;
+  recoveryStage?: RecoveryStage;
+  currentRecoveryPercentage?: number;
+  totalTreatmentCostInr?: number;
+  latestFollowUpImageUrl?: string;
   agronomistVerified?: boolean;
   agronomistNotes?: string;
   agronomistPrescription?: string;
   verifiedByAgronomistName?: string;
   updatedAt?: string;
+}
+
+export interface DiseaseTreatmentLog {
+  id: string;
+  detectionId: string;
+  treatmentDate: string;
+  treatmentName: string;
+  treatmentType: TreatmentType;
+  dosage?: string;
+  costInr?: number;
+  recoveryPercentage: number;
+  followUpImageUrl?: string;
+  notes?: string;
+  appliedBy?: string;
+  createdAt?: string;
+}
+
+export interface DiseaseTrackingSummary {
+  totalCases: number;
+  activeInfections: number;
+  underTreatment: number;
+  resolvedCases: number;
+  quarantinedPlots: number;
+  averageRecoveryDays: number;
+  totalTreatmentSpendingInr: number;
+  containmentSuccessRate: number;
 }
 
 // ─── AI Recommendations ───────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import api from './api';
-import type { DiseaseDetection } from '../types';
+import type { DiseaseDetection, DiseaseTreatmentLog, DiseaseTrackingSummary, ContainmentStatus, TreatmentType } from '../types';
 
 export interface DiseaseScanPayload {
   farmId: number;
@@ -21,6 +21,17 @@ export interface DiseaseStats {
   activeCases: number;
   resolvedCases: number;
   avgConfidence: number;
+}
+
+export interface AddTreatmentPayload {
+  treatmentName: string;
+  treatmentType?: TreatmentType;
+  treatmentDate?: string;
+  dosage?: string;
+  costInr?: number;
+  recoveryPercentage?: number;
+  followUpImageUrl?: string;
+  notes?: string;
 }
 
 export const diseaseService = {
@@ -57,4 +68,31 @@ export const diseaseService = {
   deleteDetection: async (id: string | number): Promise<void> => {
     await api.delete(`/diseases/${id}`);
   },
+
+  // --- Treatment Logging & Lifecycle Tracking ---
+
+  addTreatmentLog: async (id: string | number, payload: AddTreatmentPayload): Promise<DiseaseTreatmentLog> => {
+    const { data } = await api.post<DiseaseTreatmentLog>(`/diseases/${id}/treatments`, payload);
+    return data;
+  },
+
+  getTreatmentLogs: async (id: string | number): Promise<DiseaseTreatmentLog[]> => {
+    const { data } = await api.get<DiseaseTreatmentLog[]>(`/diseases/${id}/treatments`);
+    return data;
+  },
+
+  deleteTreatmentLog: async (logId: string | number): Promise<void> => {
+    await api.delete(`/diseases/treatments/${logId}`);
+  },
+
+  updateContainment: async (id: string | number, containmentStatus: ContainmentStatus, notes?: string): Promise<DiseaseDetection> => {
+    const { data } = await api.put<DiseaseDetection>(`/diseases/${id}/containment`, { containmentStatus, notes });
+    return data;
+  },
+
+  getTrackingSummary: async (): Promise<DiseaseTrackingSummary> => {
+    const { data } = await api.get<DiseaseTrackingSummary>('/diseases/tracking-summary');
+    return data;
+  },
 };
+

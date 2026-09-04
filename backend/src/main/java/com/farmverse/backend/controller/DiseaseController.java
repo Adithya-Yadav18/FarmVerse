@@ -66,4 +66,45 @@ public class DiseaseController {
         diseaseService.deleteDetection(id, auth.getName());
         return ResponseEntity.ok(Map.of("message", "Disease detection record deleted successfully"));
     }
+
+    // --- DISEASE TREATMENT LOGGING & RECOVERY PROGRESSION ---
+
+    @PostMapping("/{id}/treatments")
+    @PreAuthorize("hasAnyRole('FARMER', 'AGRONOMIST', 'ADMIN')")
+    public ResponseEntity<com.farmverse.backend.entity.DiseaseTreatmentLog> addTreatmentLog(
+            @PathVariable Long id,
+            @Valid @RequestBody com.farmverse.backend.dto.DiseaseTrackingDTO.AddTreatmentLogRequest request,
+            Authentication auth) {
+        return ResponseEntity.ok(diseaseService.addTreatmentLog(id, auth.getName(), request));
+    }
+
+    @GetMapping("/{id}/treatments")
+    public ResponseEntity<List<com.farmverse.backend.entity.DiseaseTreatmentLog>> getTreatmentLogs(
+            @PathVariable Long id,
+            Authentication auth) {
+        return ResponseEntity.ok(diseaseService.getTreatmentLogs(id, auth.getName()));
+    }
+
+    @DeleteMapping("/treatments/{logId}")
+    @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
+    public ResponseEntity<Void> deleteTreatmentLog(
+            @PathVariable Long logId,
+            Authentication auth) {
+        diseaseService.deleteTreatmentLog(logId, auth.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/containment")
+    @PreAuthorize("hasAnyRole('FARMER', 'AGRONOMIST', 'ADMIN')")
+    public ResponseEntity<DiseaseDetection> updateContainment(
+            @PathVariable Long id,
+            @Valid @RequestBody com.farmverse.backend.dto.DiseaseTrackingDTO.UpdateContainmentRequest request,
+            Authentication auth) {
+        return ResponseEntity.ok(diseaseService.updateContainment(id, auth.getName(), request));
+    }
+
+    @GetMapping("/tracking-summary")
+    public ResponseEntity<com.farmverse.backend.dto.DiseaseTrackingDTO.TrackingSummaryResponse> getTrackingSummary(Authentication auth) {
+        return ResponseEntity.ok(diseaseService.getTrackingSummary(auth.getName()));
+    }
 }

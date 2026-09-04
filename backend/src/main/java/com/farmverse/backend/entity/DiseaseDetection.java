@@ -62,6 +62,17 @@ public class DiseaseDetection {
 
     private String verifiedByAgronomistName;
 
+    private String containmentStatus = "CONTAINED"; // CONTAINED, SPREADING, QUARANTINED, ERADICATED
+
+    private String recoveryStage = "ACTIVE_INFECTION"; // ACTIVE_INFECTION, UNDER_TREATMENT, SIGNIFICANT_RECOVERY, RESOLVED_HEALTHY
+
+    private Integer currentRecoveryPercentage = 0; // 0 to 100%
+
+    private Double totalTreatmentCostInr = 0.0; // Total cost spent on treatments
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String latestFollowUpImageUrl; // Most recent progress photo
+
     private LocalDateTime detectedAt;
     private LocalDateTime updatedAt;
 

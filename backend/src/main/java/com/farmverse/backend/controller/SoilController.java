@@ -39,6 +39,12 @@ public class SoilController {
         return ResponseEntity.ok(soilService.getSoilDataByUserRole(email));
     }
 
+    @GetMapping("/farm/{farmId}")
+    @PreAuthorize("hasAnyRole('FARMER', 'AGRONOMIST', 'ADMIN')")
+    public ResponseEntity<List<SoilData>> getSoilDataByFarm(@PathVariable Long farmId) {
+        return ResponseEntity.ok(soilService.getSoilDataByFarm(farmId));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
     public ResponseEntity<String> deleteSoilData(@PathVariable Long id) {

@@ -77,6 +77,10 @@ public class SoilService {
         return soilDataRepository.findAllByFarmerEmail(userEmail);
     }
 
+    public List<SoilData> getSoilDataByFarm(Long farmId) {
+        return soilDataRepository.findByFarmIdOrderByRecordedAtDesc(farmId);
+    }
+
     public void deleteSoilData(Long id, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User account not found: " + userEmail));

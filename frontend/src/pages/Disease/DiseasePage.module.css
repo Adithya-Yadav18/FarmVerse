@@ -158,3 +158,219 @@
   font-weight: 700;
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
+
+/* --- VIEW TABS --- */
+.viewTabs {
+  display: flex;
+  gap: 8px;
+  background: var(--bg-card);
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 24px;
+  width: fit-content;
+}
+
+.viewTab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.viewTab:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.viewTabActive {
+  background: var(--color-emerald, #10B981) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+
+/* --- RECOVERY & CONTAINMENT HERO BANNER --- */
+.trackingHero {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: 16px;
+  padding: 22px;
+  margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .trackingHero {
+    grid-template-columns: 1fr;
+  }
+}
+
+.progressContainer {
+  margin-top: 14px;
+}
+
+.progressBarBg {
+  height: 10px;
+  background: var(--bg-secondary);
+  border-radius: 99px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progressBarFill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- BEFORE & AFTER GALLERY --- */
+.comparisonGallery {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 640px) {
+  .comparisonGallery {
+    grid-template-columns: 1fr;
+  }
+}
+
+.comparisonCard {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+}
+
+.comparisonHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.comparisonImageWrap {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  overflow: hidden;
+}
+
+.comparisonImageWrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* --- CHRONOLOGICAL TREATMENT TIMELINE --- */
+.timelineWrapper {
+  position: relative;
+  padding-left: 28px;
+  margin-top: 20px;
+}
+
+.timelineWrapper::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 9px;
+  width: 2px;
+  background: var(--border-color);
+}
+
+.timelineItem {
+  position: relative;
+  margin-bottom: 22px;
+}
+
+.timelineDot {
+  position: absolute;
+  top: 6px;
+  left: -28px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 3px solid var(--color-emerald);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  z-index: 1;
+}
+
+.timelineCard {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.timelineCard:hover {
+  border-color: var(--color-emerald);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.chipGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chip {
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chip:hover {
+  border-color: var(--color-emerald);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--color-emerald);
+}
+
+/* --- CONTAINMENT & SURVEILLANCE GRID --- */
+.surveillanceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 18px;
+}
+
+.surveillanceCard {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: 14px;
+  padding: 18px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.surveillanceCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+

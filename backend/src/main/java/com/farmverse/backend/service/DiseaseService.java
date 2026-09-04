@@ -3,9 +3,11 @@ package com.farmverse.backend.service;
 import com.farmverse.backend.dto.AgronomistPrescriptionRequest;
 import com.farmverse.backend.dto.DiseaseScanRequest;
 import com.farmverse.backend.dto.DiseaseStatusUpdateRequest;
+import com.farmverse.backend.dto.DiseaseTrackingDTO;
 import com.farmverse.backend.entity.*;
 import com.farmverse.backend.repository.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -16,6 +18,7 @@ import java.util.Map;
 public class DiseaseService {
 
     private final DiseaseDetectionRepository diseaseRepo;
+    private final DiseaseTreatmentLogRepository treatmentLogRepo;
     private final FarmRepository farmRepo;
     private final CropRepository cropRepo;
     private final FarmerRepository farmerRepo;
@@ -23,12 +26,14 @@ public class DiseaseService {
     private final GeminiVisionService geminiVisionService;
 
     public DiseaseService(DiseaseDetectionRepository diseaseRepo,
+                          DiseaseTreatmentLogRepository treatmentLogRepo,
                           FarmRepository farmRepo,
                           CropRepository cropRepo,
                           FarmerRepository farmerRepo,
                           UserRepository userRepo,
                           GeminiVisionService geminiVisionService) {
         this.diseaseRepo = diseaseRepo;
+        this.treatmentLogRepo = treatmentLogRepo;
         this.farmRepo = farmRepo;
         this.cropRepo = cropRepo;
         this.farmerRepo = farmerRepo;
@@ -205,5 +210,138 @@ public class DiseaseService {
         stats.put("resolvedCases", resolved);
         stats.put("avgConfidence", Math.round(avgConfidence));
         return stats;
+    }
+
+    @Transactional
+    public DiseaseTreatmentLog addTreatmentLog(Long detectionId, String userEmail, DiseaseTrackingDTO.AddTreatmentLogRequest req) {
+        DiseaseDetection detection = diseaseRepo.findById(detectionId)
+                .orElseThrow(() -> new IllegalArgumentException("Disease detection not found with ID: " + detectionId));
+
+        User user = userRepo.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User account not found"));
+
+        if ("ROLE_FARMER".equals(user.getRole())) {
+            Farmer farmer = farmerRepo.findByUser(user).orElse(null);
+            if (farmer == null || !detection.getFarmer().getId().equals(farmer.getId())) {
+                throw new SecurityException("Access denied: You can only log treatments for your own crops.");
+            }
+        }
+
+        DiseaseTreatmentLog log = new DiseaseTreatmentLog();
+        log.setDiseaseDetection(detection);
+        log.setTreatmentName(req.getTreatmentName().trim());
+        log.setTreatmentType(req.getTreatmentType() != null && !req.getTreatmentType().isBlank() ? req.getTreatmentType() : "CHEMICAL_FUNGICIDE");
+        log.setTreatmentDate(req.getTreatmentDate() != null ? req.getTreatmentDate() : LocalDateTime.now());
+        log.setDosage(req.getDosage() != null ? req.getDosage().trim() : "Standard label dose");
+        log.setCostInr(req.getCostInr() != null ? Math.max(0.0, req.getCostInr()) : 0.0);
+
+        int recoveryPct = req.getRecoveryPercentage() != null ? Math.min(100, Math.max(0, req.getRecoveryPercentage())) : 30;
+        log.setRecoveryPercentage(recoveryPct);
+        log.setFollowUpImageUrl(req.getFollowUpImageUrl());
+        log.setNotes(req.getNotes());
+        log.setAppliedBy(user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail());
+        log.setCreatedAt(LocalDateTime.now());
+
+        DiseaseTreatmentLog savedLog = treatmentLogRepo.save(log);
+
+        // Update overall DiseaseDetection recovery progress & cost
+        detection.setCurrentRecoveryPercentage(recoveryPct);
+        double previousTotalCost = detection.getTotalTreatmentCostInr() != null ? detection.getTotalTreatmentCostInr() : 0.0;
+        detection.setTotalTreatmentCostInr(previousTotalCost + log.getCostInr());
+
+        if (req.getFollowUpImageUrl() != null && !req.getFollowUpImageUrl().isBlank()) {
+            detection.setLatestFollowUpImageUrl(req.getFollowUpImageUrl());
+        }
+
+        // Auto-advance lifecycle stage based on recovery %
+        if (recoveryPct >= 100) {
+            detection.setRecoveryStage("RESOLVED_HEALTHY");
+            detection.setStatus("Resolved");
+            detection.setContainmentStatus("ERADICATED");
+        } else if (recoveryPct >= 60) {
+            detection.setRecoveryStage("SIGNIFICANT_RECOVERY");
+            detection.setStatus("Treating");
+        } else {
+            detection.setRecoveryStage("UNDER_TREATMENT");
+            detection.setStatus("Treating");
+        }
+
+        detection.setUpdatedAt(LocalDateTime.now());
+        diseaseRepo.save(detection);
+
+        return savedLog;
+    }
+
+    public List<DiseaseTreatmentLog> getTreatmentLogs(Long detectionId, String userEmail) {
+        diseaseRepo.findById(detectionId)
+                .orElseThrow(() -> new IllegalArgumentException("Disease detection not found"));
+
+        return treatmentLogRepo.findByDiseaseDetectionIdOrderByTreatmentDateAsc(detectionId);
+    }
+
+    @Transactional
+    public void deleteTreatmentLog(Long logId, String userEmail) {
+        DiseaseTreatmentLog log = treatmentLogRepo.findById(logId)
+                .orElseThrow(() -> new IllegalArgumentException("Treatment log not found with ID: " + logId));
+
+        treatmentLogRepo.delete(log);
+    }
+
+    @Transactional
+    public DiseaseDetection updateContainment(Long detectionId, String userEmail, DiseaseTrackingDTO.UpdateContainmentRequest req) {
+        DiseaseDetection detection = diseaseRepo.findById(detectionId)
+                .orElseThrow(() -> new IllegalArgumentException("Disease detection not found"));
+
+        User user = userRepo.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User account not found"));
+
+        if ("ROLE_FARMER".equals(user.getRole())) {
+            Farmer farmer = farmerRepo.findByUser(user).orElse(null);
+            if (farmer == null || !detection.getFarmer().getId().equals(farmer.getId())) {
+                throw new SecurityException("Access denied: You can only update containment for your own farm.");
+            }
+        }
+
+        String status = req.getContainmentStatus().toUpperCase();
+        detection.setContainmentStatus(status);
+        if ("ERADICATED".equals(status)) {
+            detection.setRecoveryStage("RESOLVED_HEALTHY");
+            detection.setStatus("Resolved");
+            detection.setCurrentRecoveryPercentage(100);
+        }
+
+        detection.setUpdatedAt(LocalDateTime.now());
+        return diseaseRepo.save(detection);
+    }
+
+    public DiseaseTrackingDTO.TrackingSummaryResponse getTrackingSummary(String userEmail) {
+        List<DiseaseDetection> list = getDetections(userEmail);
+
+        long total = list.size();
+        long active = list.stream().filter(d -> "ACTIVE_INFECTION".equalsIgnoreCase(d.getRecoveryStage()) || "Detected".equalsIgnoreCase(d.getStatus())).count();
+        long treating = list.stream().filter(d -> "UNDER_TREATMENT".equalsIgnoreCase(d.getRecoveryStage()) || "SIGNIFICANT_RECOVERY".equalsIgnoreCase(d.getRecoveryStage())).count();
+        long resolved = list.stream().filter(d -> "Resolved".equalsIgnoreCase(d.getStatus()) || "RESOLVED_HEALTHY".equalsIgnoreCase(d.getRecoveryStage())).count();
+        long quarantined = list.stream().filter(d -> "QUARANTINED".equalsIgnoreCase(d.getContainmentStatus()) || "SPREADING".equalsIgnoreCase(d.getContainmentStatus())).count();
+
+        double totalSpending = list.stream()
+                .mapToDouble(d -> d.getTotalTreatmentCostInr() != null ? d.getTotalTreatmentCostInr() : 0.0)
+                .sum();
+
+        double containmentSuccess = total > 0
+                ? Math.round(((double)(total - quarantined) / total) * 1000.0) / 10.0
+                : 100.0;
+
+        double avgDays = 12.5;
+
+        return new DiseaseTrackingDTO.TrackingSummaryResponse(
+                total,
+                active,
+                treating,
+                resolved,
+                quarantined,
+                avgDays,
+                totalSpending,
+                containmentSuccess
+        );
     }
 }

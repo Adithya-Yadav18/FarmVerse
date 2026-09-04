@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
   MdBugReport, MdUpload, MdScience, MdVerified, MdCheckCircle,
-  MdDelete, MdOutlineLocalHospital, MdShield, MdCameraAlt, MdHelpOutline
+  MdDelete, MdOutlineLocalHospital, MdShield, MdCameraAlt,
+  MdTimeline, MdAddCircle, MdMedicalServices,
+  MdTrendingUp, MdAttachMoney, MdWarning, MdPhotoLibrary
 } from 'react-icons/md';
 import { PageHeader } from '../../components/ui/PageHeader/PageHeader';
 import { Button } from '../../components/ui/Button/Button';
@@ -16,7 +18,11 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
 import { diseaseService } from '../../services/diseaseService';
 import api from '../../services/api';
-import type { DiseaseDetection, Farm, Crop } from '../../types';
+import type {
+  DiseaseDetection, Farm, Crop,
+  DiseaseTreatmentLog, DiseaseTrackingSummary,
+  ContainmentStatus, TreatmentType
+} from '../../types';
 import styles from './DiseasePage.module.css';
 
 const SEVERITY_COLOR: Record<string, string> = {
@@ -25,6 +31,29 @@ const SEVERITY_COLOR: Record<string, string> = {
   High: 'var(--color-error, #EF4444)',
   Critical: '#991B1B'
 };
+
+const CONTAINMENT_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
+  CONTAINED: { label: 'Contained', bg: 'rgba(16, 185, 129, 0.12)', text: '#10B981', border: 'rgba(16, 185, 129, 0.3)' },
+  SPREADING: { label: 'Spreading / Alert', bg: 'rgba(239, 68, 68, 0.12)', text: '#EF4444', border: 'rgba(239, 68, 68, 0.3)' },
+  QUARANTINED: { label: 'Quarantined Plot', bg: 'rgba(245, 158, 11, 0.12)', text: '#F59E0B', border: 'rgba(245, 158, 11, 0.3)' },
+  ERADICATED: { label: 'Eradicated / Cleared', bg: 'rgba(59, 130, 246, 0.12)', text: '#3B82F6', border: 'rgba(59, 130, 246, 0.3)' },
+};
+
+const RECOVERY_STAGE_CONFIG: Record<string, { label: string; color: string }> = {
+  ACTIVE_INFECTION: { label: 'Active Infection (Day 0)', color: '#EF4444' },
+  UNDER_TREATMENT: { label: 'Under Treatment', color: '#F59E0B' },
+  SIGNIFICANT_RECOVERY: { label: 'Significant Recovery', color: '#3B82F6' },
+  RESOLVED_HEALTHY: { label: 'Full Remission (Healthy)', color: '#10B981' },
+};
+
+const TREATMENT_PRESETS = [
+  { name: 'Mancozeb 75% WP', type: 'CHEMICAL_FUNGICIDE' as TreatmentType, dose: '2.5 g / Liter water' },
+  { name: 'Neem Oil (Azadirachtin 1500ppm)', type: 'ORGANIC_BIOCONTROL' as TreatmentType, dose: '3.0 ml / Liter water' },
+  { name: 'Copper Oxychloride 50% WP', type: 'CHEMICAL_FUNGICIDE' as TreatmentType, dose: '3.0 g / Liter water' },
+  { name: 'Trichoderma viride Bio-fungicide', type: 'ORGANIC_BIOCONTROL' as TreatmentType, dose: '5.0 g / kg seed or drench' },
+  { name: 'Potassium Phosphite Foliar Booster', type: 'NUTRITIONAL_BOOST' as TreatmentType, dose: '2.0 ml / Liter water' },
+  { name: 'Canopy Thinning & Pruning', type: 'CULTURAL_PRUNING' as TreatmentType, dose: 'Physical removal of blighted leaves' }
+];
 
 const SAMPLE_LEAF_PRESETS = [
   { label: '🍅 Tomato Leaf Spot', crop: 'Tomato', notes: 'Concentric brown spots with yellow halos on lower leaves' },
@@ -40,15 +69,25 @@ export default function DiseasePage() {
   const isAdmin = user?.role === 'Admin';
   const isNormalUser = user?.role === 'Normal User';
 
+  // Navigation tab: 'lab' | 'tracking' | 'surveillance'
+  const [activeTab, setActiveTab] = useState<'lab' | 'tracking' | 'surveillance'>('tracking');
+
   const [data, setData] = useState<DiseaseDetection[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<DiseaseDetection | null>(null);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [crops, setCrops] = useState<Crop[]>([]);
 
+  // Treatment logs & Tracking Summary
+  const [treatmentLogs, setTreatmentLogs] = useState<DiseaseTreatmentLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [trackingSummary, setTrackingSummary] = useState<DiseaseTrackingSummary | null>(null);
+
   // Modals state
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showPrescribeModal, setShowPrescribeModal] = useState(false);
+  const [showTreatmentModal, setShowTreatmentModal] = useState(false);
+  const [showContainmentModal, setShowContainmentModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
 
@@ -69,18 +108,38 @@ export default function DiseasePage() {
     clinicalNotes: ''
   });
 
+  // Log Treatment Form State
+  const [treatmentForm, setTreatmentForm] = useState({
+    treatmentName: '',
+    treatmentType: 'CHEMICAL_FUNGICIDE' as TreatmentType,
+    treatmentDate: new Date().toISOString().slice(0, 16),
+    dosage: '',
+    costInr: '',
+    recoveryPercentage: 35,
+    followUpImageUrl: '',
+    notes: ''
+  });
+
+  // Containment Form State
+  const [containmentForm, setContainmentForm] = useState({
+    containmentStatus: 'CONTAINED' as ContainmentStatus,
+    notes: ''
+  });
+
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [detections, farmsRes, cropsRes] = await Promise.all([
+      const [detections, farmsRes, cropsRes, summaryRes] = await Promise.all([
         diseaseService.getDetections(),
         api.get<Farm[]>('/farms').catch(() => ({ data: [] })),
-        api.get<Crop[]>('/crops').catch(() => ({ data: [] }))
+        api.get<Crop[]>('/crops').catch(() => ({ data: [] })),
+        diseaseService.getTrackingSummary().catch(() => null)
       ]);
 
       setData(detections);
       setFarms(farmsRes.data || []);
       setCrops(cropsRes.data || []);
+      if (summaryRes) setTrackingSummary(summaryRes);
 
       if (detections.length > 0) {
         setSelected(detections[0]);
@@ -99,7 +158,28 @@ export default function DiseasePage() {
     fetchData();
   }, []);
 
-  // Handle Image File Selection with Base64 Conversion
+  // Whenever selected case changes, fetch its treatment logs
+  useEffect(() => {
+    if (selected?.id) {
+      loadTreatmentLogs(selected.id);
+    } else {
+      setTreatmentLogs([]);
+    }
+  }, [selected?.id]);
+
+  const loadTreatmentLogs = async (detectionId: string) => {
+    try {
+      setLoadingLogs(true);
+      const logs = await diseaseService.getTreatmentLogs(detectionId);
+      setTreatmentLogs(logs);
+    } catch (err) {
+      console.error('Error fetching treatment logs', err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  // Handle Image Selection for Leaf Scan
   const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -108,7 +188,6 @@ export default function DiseasePage() {
       toast.error('Please select an image file (PNG, JPG, JPEG)');
       return;
     }
-
     if (file.size > 5 * 1024 * 1024) {
       toast.error('Image size must be under 5MB');
       return;
@@ -117,6 +196,21 @@ export default function DiseasePage() {
     const reader = new FileReader();
     reader.onload = () => {
       setScanForm(prev => ({ ...prev, imageUrl: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle Image Selection for Treatment Follow-up Photo
+  const handleTreatmentFollowUpImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file (PNG, JPG, JPEG)');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setTreatmentForm(prev => ({ ...prev, followUpImageUrl: reader.result as string }));
     };
     reader.readAsDataURL(file);
   };
@@ -144,6 +238,7 @@ export default function DiseasePage() {
       toast.success(`Diagnosis complete: ${result.disease} (${result.confidence}%)`);
       setShowUploadModal(false);
       setScanForm({ farmId: '', cropId: '', cropName: '', notes: '', imageUrl: '' });
+      setActiveTab('tracking'); // Auto-switch to tracking view
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to analyze crop scan');
     } finally {
@@ -151,16 +246,79 @@ export default function DiseasePage() {
     }
   };
 
-  // Farmer updates treatment status
-  const handleUpdateStatus = async (newStatus: 'Detected' | 'Treating' | 'Resolved') => {
+  // Submit Treatment Application Log
+  const handleTreatmentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!selected) return;
+    if (!treatmentForm.treatmentName.trim()) {
+      toast.error('Treatment or compound name is required');
+      return;
+    }
+
     try {
-      const updated = await diseaseService.updateStatus(selected.id, newStatus);
-      setData(prev => prev.map(d => d.id === selected.id ? updated : d));
-      setSelected(updated);
-      toast.success(`Case updated to ${newStatus}`);
+      const newLog = await diseaseService.addTreatmentLog(selected.id, {
+        treatmentName: treatmentForm.treatmentName.trim(),
+        treatmentType: treatmentForm.treatmentType,
+        treatmentDate: treatmentForm.treatmentDate ? new Date(treatmentForm.treatmentDate).toISOString() : undefined,
+        dosage: treatmentForm.dosage,
+        costInr: treatmentForm.costInr ? Number(treatmentForm.costInr) : 0,
+        recoveryPercentage: treatmentForm.recoveryPercentage,
+        followUpImageUrl: treatmentForm.followUpImageUrl,
+        notes: treatmentForm.notes
+      });
+
+      setTreatmentLogs(prev => [...prev, newLog]);
+
+      // Update active selection and parent list
+      const recovery = newLog.recoveryPercentage;
+      const updatedCase: DiseaseDetection = {
+        ...selected,
+        currentRecoveryPercentage: recovery,
+        totalTreatmentCostInr: (selected.totalTreatmentCostInr || 0) + (newLog.costInr || 0),
+        latestFollowUpImageUrl: newLog.followUpImageUrl || selected.latestFollowUpImageUrl,
+        status: recovery >= 100 ? 'Resolved' : 'Treating',
+        recoveryStage: recovery >= 100 ? 'RESOLVED_HEALTHY' : recovery >= 60 ? 'SIGNIFICANT_RECOVERY' : 'UNDER_TREATMENT',
+        containmentStatus: recovery >= 100 ? 'ERADICATED' : selected.containmentStatus || 'CONTAINED'
+      };
+
+      setSelected(updatedCase);
+      setData(prev => prev.map(d => d.id === selected.id ? updatedCase : d));
+      toast.success(`Treatment logged! Recovery stage updated to ${recovery}%`);
+      setShowTreatmentModal(false);
+
+      // Reset treatment form
+      setTreatmentForm({
+        treatmentName: '',
+        treatmentType: 'CHEMICAL_FUNGICIDE',
+        treatmentDate: new Date().toISOString().slice(0, 16),
+        dosage: '',
+        costInr: '',
+        recoveryPercentage: Math.min(100, (recovery || 0) + 25),
+        followUpImageUrl: '',
+        notes: ''
+      });
+
+      // Refresh tracking summary KPIs
+      diseaseService.getTrackingSummary().then(setTrackingSummary).catch(() => {});
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update case status');
+      toast.error(error.response?.data?.message || 'Failed to log treatment application');
+    }
+  };
+
+  // Submit Containment Status Update
+  const handleContainmentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selected) return;
+
+    try {
+      const updated = await diseaseService.updateContainment(selected.id, containmentForm.containmentStatus, containmentForm.notes);
+      setSelected(updated);
+      setData(prev => prev.map(d => d.id === selected.id ? updated : d));
+      toast.success(`Containment status updated to ${containmentForm.containmentStatus}`);
+      setShowContainmentModal(false);
+      diseaseService.getTrackingSummary().then(setTrackingSummary).catch(() => {});
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update containment');
     }
   };
 
@@ -216,263 +374,771 @@ export default function DiseasePage() {
       }
       toast.success('Disease record removed');
       setDeleteId(null);
+      diseaseService.getTrackingSummary().then(setTrackingSummary).catch(() => {});
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to delete record');
+    }
+  };
+
+  // Delete individual treatment log
+  const handleDeleteLog = async (logId: string) => {
+    try {
+      await diseaseService.deleteTreatmentLog(logId);
+      setTreatmentLogs(prev => prev.filter(l => l.id !== logId));
+      toast.success('Treatment entry removed');
+    } catch (e: any) {
+      toast.error('Failed to delete treatment log');
     }
   };
 
   // Compute stat metrics
   const activeCount = data.filter(d => d.status !== 'Resolved').length;
   const resolvedCount = data.filter(d => d.status === 'Resolved').length;
-  const avgConf = data.length > 0
-    ? Math.round(data.reduce((acc, cur) => acc + (cur.confidence || 0), 0) / data.length)
-    : 0;
+  const quarantinedCount = data.filter(d => d.containmentStatus === 'QUARANTINED' || d.containmentStatus === 'SPREADING').length;
+  const totalCost = data.reduce((sum, d) => sum + (d.totalTreatmentCostInr || 0), 0);
 
   return (
     <div>
       <PageHeader
-        title="Crop Disease Diagnostic Lab"
+        title="Crop Disease Tracking & Outbreak Surveillance"
         subtitle={
           isAgronomist
-            ? "Surveillance review board: Inspect farmer leaf scans, confirm pathogens, and issue certified prescriptions."
+            ? "Clinical surveillance portal: Review leaf pathology, verify treatment regimens, and track crop recovery to full remission."
             : isAdmin
-            ? "Regional agricultural epidemiology: Monitor disease prevalence, outbreaks, and pesticide compliance."
+            ? "Regional plant epidemiology: Monitor disease spread, quarantine compliance, and chemical vs organic remediation efficacy."
             : isNormalUser
-            ? "Food safety & crop health guide: Real-time surveillance of plant health and organic crop protection."
-            : "AI-powered foliar pathology: Scan crop leaves, detect diseases instantly, and get certified remedies."
+            ? "Safe crop health registry: View active field remediations, biological pest control, and food safety standards."
+            : "Precision plant pathology: Track your diseased crops through multi-week recovery, log treatments, and compare before/after healing."
         }
-        breadcrumbs={[{ label: 'Disease Lab' }]}
+        breadcrumbs={[{ label: 'Disease Management' }]}
         actions={
-          (isFarmer || isAdmin) ? (
-            <Button leftIcon={<MdCameraAlt />} variant="primary" onClick={() => setShowUploadModal(true)}>
-              Scan Crop Leaf
-            </Button>
-          ) : isAgronomist ? (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.12)', color: 'var(--color-primary, #3B82F6)', padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700 }}>
-              <MdScience size={18} /> Agronomist Diagnostic Mode
-            </div>
-          ) : null
+          <div style={{ display: 'flex', gap: 10 }}>
+            {(isFarmer || isAdmin) && (
+              <Button leftIcon={<MdCameraAlt />} variant="primary" onClick={() => setShowUploadModal(true)}>
+                New Leaf Scan
+              </Button>
+            )}
+            {selected && (isFarmer || isAdmin || isAgronomist) && (
+              <Button
+                leftIcon={<MdAddCircle />}
+                variant="outline"
+                onClick={() => {
+                  setTreatmentForm(prev => ({
+                    ...prev,
+                    recoveryPercentage: Math.min(100, (selected.currentRecoveryPercentage || 25) + 20)
+                  }));
+                  setShowTreatmentModal(true);
+                }}
+              >
+                Log Treatment
+              </Button>
+            )}
+          </div>
         }
       />
 
+      {/* Top Navigation View Tabs */}
+      <div className={styles.viewTabs}>
+        <button
+          className={`${styles.viewTab} ${activeTab === 'tracking' ? styles.viewTabActive : ''}`}
+          onClick={() => setActiveTab('tracking')}
+        >
+          <MdTimeline size={18} /> Treatment & Recovery Timeline
+        </button>
+        <button
+          className={`${styles.viewTab} ${activeTab === 'lab' ? styles.viewTabActive : ''}`}
+          onClick={() => setActiveTab('lab')}
+        >
+          <MdScience size={18} /> AI Diagnostic Lab
+        </button>
+        <button
+          className={`${styles.viewTab} ${activeTab === 'surveillance' ? styles.viewTabActive : ''}`}
+          onClick={() => setActiveTab('surveillance')}
+        >
+          <MdShield size={18} /> Outbreak & Containment Grid
+        </button>
+      </div>
+
       {/* Overview Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18, marginBottom: 24 }}>
-        <StatCard label="Total Scans" value={data.length.toString()} icon={<MdBugReport />} iconBg="rgba(239, 68, 68, 0.1)" iconColor="var(--color-error, #EF4444)" />
-        <StatCard label="Active Pathogens" value={activeCount.toString()} icon={<MdBugReport />} iconBg="rgba(245, 158, 11, 0.1)" iconColor="var(--color-warning, #F59E0B)" />
-        <StatCard label="Resolved Cases" value={resolvedCount.toString()} icon={<MdCheckCircle />} iconBg="rgba(16, 185, 129, 0.1)" iconColor="var(--color-emerald, #10B981)" />
-        <StatCard label="Avg. Confidence" value={data.length ? `${avgConf}%` : '—'} icon={<MdScience />} iconBg="rgba(59, 130, 246, 0.1)" iconColor="var(--color-primary, #3B82F6)" />
+        <StatCard
+          label="Total Cases Tracked"
+          value={data.length.toString()}
+          icon={<MdBugReport />}
+          iconBg="rgba(239, 68, 68, 0.1)"
+          iconColor="var(--color-error, #EF4444)"
+        />
+        <StatCard
+          label="Active Under Treatment"
+          value={activeCount.toString()}
+          icon={<MdMedicalServices />}
+          iconBg="rgba(245, 158, 11, 0.1)"
+          iconColor="var(--color-warning, #F59E0B)"
+        />
+        <StatCard
+          label="Full Remissions"
+          value={resolvedCount.toString()}
+          icon={<MdCheckCircle />}
+          iconBg="rgba(16, 185, 129, 0.1)"
+          iconColor="var(--color-emerald, #10B981)"
+        />
+        <StatCard
+          label="Treatment Investment"
+          value={`₹${totalCost.toLocaleString('en-IN')}`}
+          icon={<MdAttachMoney />}
+          iconBg="rgba(59, 130, 246, 0.1)"
+          iconColor="var(--color-primary, #3B82F6)"
+        />
       </div>
 
-      <div className={styles.layout}>
-        {/* Left Column: List of Detections */}
-        <div>
-          {loading ? (
-            Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
-          ) : data.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 16px', background: 'var(--bg-card)', borderRadius: 12, border: '1px dashed var(--border-color)' }}>
-              <MdBugReport size={40} style={{ opacity: 0.3, marginBottom: 10, color: 'var(--color-emerald)' }} />
-              <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>No Disease Cases Logged</p>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                {(isFarmer || isAdmin) ? 'Click "Scan Crop Leaf" to analyze a plant.' : 'All registered farms are currently healthy.'}
-              </p>
+      {/* ─── TAB 1: TREATMENT & RECOVERY LIFECYCLE (PRIMARY) ───────────────── */}
+      {activeTab === 'tracking' && (
+        <div className={styles.layout}>
+          {/* Left Column: Registered Infection Cases */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Infection Cases</h3>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{data.length} registered</span>
             </div>
-          ) : (
-            data.map((d, i) => (
-              <motion.div
-                key={d.id || i}
-                className={`${styles.card} ${selected?.id === d.id ? styles.cardActive : ''}`}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={() => setSelected(d)}
-              >
-                <div className={styles.cardTop}>
-                  <Badge variant={statusVariant(d.status)} dot>{d.status}</Badge>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    {d.detectedAt ? new Date(d.detectedAt).toLocaleDateString() : 'N/A'}
-                  </span>
-                </div>
 
-                <h4 className={styles.diseaseName}>{d.disease}</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                  {d.cropName} · {d.farmName || `Farm #${d.farmId}`}
-                </p>
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
+            ) : data.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 16px', background: 'var(--bg-card)', borderRadius: 12, border: '1px dashed var(--border-color)' }}>
+                <MdBugReport size={40} style={{ opacity: 0.3, marginBottom: 10, color: 'var(--color-emerald)' }} />
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>No Active Diseases</p>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>All farm parcels are healthy. Scan a leaf to log a case.</p>
+              </div>
+            ) : (
+              data.map((d, i) => {
+                const containment = CONTAINMENT_CONFIG[d.containmentStatus || 'CONTAINED'] || CONTAINMENT_CONFIG.CONTAINED;
+                const recoveryPct = d.currentRecoveryPercentage || 0;
+                return (
+                  <motion.div
+                    key={d.id || i}
+                    className={`${styles.card} ${selected?.id === d.id ? styles.cardActive : ''}`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    onClick={() => setSelected(d)}
+                  >
+                    <div className={styles.cardTop}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          background: containment.bg,
+                          color: containment.text,
+                          border: `1px solid ${containment.border}`
+                        }}
+                      >
+                        {containment.label}
+                      </span>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        {d.detectedAt ? new Date(d.detectedAt).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: SEVERITY_COLOR[d.severity] || 'var(--color-warning)' }}>
-                    ● {d.severity} Severity
-                  </span>
-                  {d.agronomistVerified ? (
-                    <span className={styles.verifiedBadge}><MdVerified size={13} /> Verified</span>
-                  ) : (
-                    <span style={{ fontSize: 11, color: 'var(--color-gold)', fontWeight: 600 }}>AI Diagnosed</span>
-                  )}
-                </div>
-              </motion.div>
-            ))
-          )}
-        </div>
+                    <h4 className={styles.diseaseName}>{d.disease}</h4>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>
+                      {d.cropName} · {d.farmName || `Farm #${d.farmId}`}
+                    </p>
 
-        {/* Right Column: Detailed Clinical Inspection Card */}
-        <div>
-          {selected ? (
-            <Card>
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                    {/* Mini Healing Progress Bar */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Recovery</span>
+                        <span style={{ color: recoveryPct >= 100 ? '#10B981' : 'var(--text-primary)' }}>{recoveryPct}%</span>
+                      </div>
+                      <div style={{ height: 5, background: 'var(--bg-secondary)', borderRadius: 99, overflow: 'hidden' }}>
+                        <div
+                          style={{
+                            height: '100%',
+                            width: `${recoveryPct}%`,
+                            background: recoveryPct >= 100 ? '#10B981' : recoveryPct >= 60 ? '#3B82F6' : '#F59E0B',
+                            borderRadius: 99,
+                            transition: 'width 0.4s ease'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Right Column: Case Lifecycle, Before/After Gallery, & Treatment Timeline */}
+          <div>
+            {selected ? (
+              <>
+                {/* Hero Tracking Banner */}
+                <div className={styles.trackingHero}>
                   <div>
-                    <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {selected.disease}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
+                      <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                        {selected.disease}
+                      </h2>
                       {selected.agronomistVerified && (
-                        <span className={styles.verifiedBadge} title="Verified by Agronomist">
-                          <MdVerified size={14} /> Clinical Verification
+                        <span className={styles.verifiedBadge}>
+                          <MdVerified size={13} /> Agronomist Verified
                         </span>
                       )}
-                    </h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-                      Farm: <strong>{selected.farmName || `Farm #${selected.farmId}`}</strong> · Crop: <strong>{selected.cropName}</strong>
+                    </div>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 13.5, margin: 0 }}>
+                      Plot: <strong>{selected.farmName}</strong> · Crop: <strong>{selected.cropName}</strong> · Diagnosed on{' '}
+                      {selected.detectedAt ? new Date(selected.detectedAt).toLocaleDateString() : 'N/A'}
                     </p>
+
+                    {/* Recovery Progress Bar */}
+                    <div className={styles.progressContainer}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                          Healing Progression: {RECOVERY_STAGE_CONFIG[selected.recoveryStage || 'ACTIVE_INFECTION']?.label}
+                        </span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: (selected.currentRecoveryPercentage || 0) >= 100 ? '#10B981' : 'var(--color-emerald)' }}>
+                          {selected.currentRecoveryPercentage || 0}% Healed
+                        </span>
+                      </div>
+                      <div className={styles.progressBarBg}>
+                        <div
+                          className={styles.progressBarFill}
+                          style={{
+                            width: `${selected.currentRecoveryPercentage || 0}%`,
+                            background:
+                              (selected.currentRecoveryPercentage || 0) >= 100
+                                ? '#10B981'
+                                : (selected.currentRecoveryPercentage || 0) >= 60
+                                ? 'linear-gradient(90deg, #F59E0B, #10B981)'
+                                : 'linear-gradient(90deg, #EF4444, #F59E0B)'
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Badge variant={statusVariant(selected.status)} dot>{selected.status}</Badge>
-                    {(isFarmer || isAdmin) && (
-                      <button
-                        onClick={() => setDeleteId(selected.id)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger, #EF4444)', padding: 4 }}
-                        title="Delete record"
+
+                  {/* Actions & Metrics */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        leftIcon={<MdAddCircle />}
+                        onClick={() => {
+                          setTreatmentForm(prev => ({
+                            ...prev,
+                            recoveryPercentage: Math.min(100, (selected.currentRecoveryPercentage || 30) + 20)
+                          }));
+                          setShowTreatmentModal(true);
+                        }}
                       >
-                        <MdDelete size={18} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Metrics Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
-                {[
-                  { label: 'Pathogen Classification', value: selected.pathogenType || 'Fungal Pathogen' },
-                  { label: 'Severity Level', value: selected.severity, color: SEVERITY_COLOR[selected.severity] },
-                  { label: 'Foliage Area Affected', value: `${selected.affectedArea || 10}%` },
-                  { label: 'AI Diagnostic Confidence', value: `${selected.confidence || 90}%` },
-                  { label: 'Date Logged', value: selected.detectedAt ? new Date(selected.detectedAt).toLocaleDateString() : 'N/A' },
-                  { label: 'Case Status', value: selected.status },
-                ].map(m => (
-                  <div key={m.label} style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '12px 14px' }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                      {m.label}
-                    </p>
-                    <p style={{ fontWeight: 700, color: (m as any).color ?? 'var(--text-primary)' }}>{m.value}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Confidence Meter */}
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Diagnostic Accuracy</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-emerald)' }}>{selected.confidence}% Match</span>
-                </div>
-                <div style={{ height: 8, background: 'var(--bg-tertiary, #1e293b)', borderRadius: 99, overflow: 'hidden' }}>
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${selected.confidence}%`,
-                      background: 'linear-gradient(90deg, var(--color-emerald, #10B981), var(--color-gold, #D4AF37))',
-                      borderRadius: 99,
-                      transition: 'width 1s ease'
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* High-Resolution Leaf Scan Preview */}
-              {selected.imageUrl && (
-                <div style={{ marginBottom: 20 }}>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>
-                    Leaf Scan Specimen
-                  </p>
-                  <div style={{ maxHeight: 240, overflow: 'hidden', borderRadius: 12, border: '1px solid var(--border-color)', background: '#000', display: 'flex', justifyContent: 'center' }}>
-                    <img src={selected.imageUrl} alt="Leaf Scan" style={{ maxHeight: 240, objectFit: 'contain' }} />
-                  </div>
-                </div>
-              )}
-
-              {/* AI Treatment Protocol */}
-              <div style={{ background: 'rgba(239, 68, 68, 0.06)', borderRadius: 12, padding: 16, borderLeft: '4px solid var(--color-error, #EF4444)', marginBottom: 16 }}>
-                <h4 style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <MdShield size={18} /> AI Recommended Clinical Protocol
-                </h4>
-                <p style={{ color: 'var(--text-secondary)', lineHeight: 1.65, fontSize: 14, whiteSpace: 'pre-line' }}>
-                  {selected.treatment}
-                </p>
-              </div>
-
-              {/* Certified Agronomist Prescription Box */}
-              {selected.agronomistVerified && (
-                <div className={styles.prescriptionCard}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <MdOutlineLocalHospital size={20} color="#3B82F6" />
-                    <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15 }}>
-                      Certified Agronomist Prescription
-                    </h4>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 'auto' }}>
-                      Issued by {selected.verifiedByAgronomistName || 'Registered Agronomist'}
+                        Log Treatment
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setContainmentForm({
+                            containmentStatus: selected.containmentStatus || 'CONTAINED',
+                            notes: ''
+                          });
+                          setShowContainmentModal(true);
+                        }}
+                      >
+                        Containment
+                      </Button>
+                    </div>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      Total Spent: <strong>₹{(selected.totalTreatmentCostInr || 0).toLocaleString('en-IN')}</strong>
                     </span>
                   </div>
-                  <p style={{ color: 'var(--text-primary)', fontSize: 14, lineHeight: 1.65, whiteSpace: 'pre-line', background: 'var(--bg-card)', padding: 12, borderRadius: 8 }}>
-                    {selected.agronomistPrescription}
-                  </p>
-                  {selected.agronomistNotes && (
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8, fontStyle: 'italic' }}>
-                      Field Notes: {selected.agronomistNotes}
-                    </p>
-                  )}
                 </div>
-              )}
 
-              {/* Dynamic Role Action Buttons */}
-              <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
-                {/* Farmer Actions */}
-                {(isFarmer || isAdmin) && selected.status !== 'Resolved' && (
-                  <>
-                    {selected.status !== 'Treating' && (
-                      <Button variant="primary" size="sm" onClick={() => handleUpdateStatus('Treating')}>
-                        Mark as Treating
+                {/* Before & After Visual Recovery Gallery */}
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <MdPhotoLibrary size={20} color="var(--color-emerald)" />
+                  Before & After Foliar Recovery Gallery
+                </h3>
+
+                <div className={styles.comparisonGallery}>
+                  {/* Before: Initial Infection */}
+                  <div className={styles.comparisonCard}>
+                    <div className={styles.comparisonHeader}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-error, #EF4444)' }}>
+                        ● Day 0: Initial Leaf Infection
+                      </span>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        {selected.detectedAt ? new Date(selected.detectedAt).toLocaleDateString() : 'Initial'}
+                      </span>
+                    </div>
+                    <div className={styles.comparisonImageWrap}>
+                      {selected.imageUrl ? (
+                        <img src={selected.imageUrl} alt="Initial Infection" />
+                      ) : (
+                        <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20 }}>
+                          <MdBugReport size={36} opacity={0.3} />
+                          <p style={{ fontSize: 12, marginTop: 6 }}>No initial photo recorded</p>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: '10px 14px', background: 'var(--bg-card)', fontSize: 12, color: 'var(--text-muted)' }}>
+                      Pathogen: <strong>{selected.disease}</strong> ({selected.pathogenType || 'Fungal'})
+                    </div>
+                  </div>
+
+                  {/* After: Latest Follow-Up */}
+                  <div className={styles.comparisonCard}>
+                    <div className={styles.comparisonHeader}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: (selected.currentRecoveryPercentage || 0) >= 100 ? '#10B981' : '#3B82F6' }}>
+                        ● Latest Foliage State ({selected.currentRecoveryPercentage || 0}% Remission)
+                      </span>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        {selected.updatedAt ? new Date(selected.updatedAt).toLocaleDateString() : 'Recent'}
+                      </span>
+                    </div>
+                    <div className={styles.comparisonImageWrap}>
+                      {selected.latestFollowUpImageUrl ? (
+                        <img src={selected.latestFollowUpImageUrl} alt="Follow-up recovery" />
+                      ) : (
+                        <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20 }}>
+                          <MdCameraAlt size={36} opacity={0.3} />
+                          <p style={{ fontSize: 12, marginTop: 6 }}>No follow-up photo uploaded yet</p>
+                          <p style={{ fontSize: 11, color: 'var(--color-emerald)', cursor: 'pointer' }} onClick={() => setShowTreatmentModal(true)}>
+                            + Upload during next treatment log
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: '10px 14px', background: 'var(--bg-card)', fontSize: 12, color: 'var(--text-muted)' }}>
+                      Stage: <strong>{RECOVERY_STAGE_CONFIG[selected.recoveryStage || 'ACTIVE_INFECTION']?.label}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chronological Treatment Journal */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 30, marginBottom: 16 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <MdTimeline size={20} color="var(--color-emerald)" />
+                    Chronological Treatment Journal & Interventions ({treatmentLogs.length})
+                  </h3>
+                  <Button size="sm" variant="ghost" leftIcon={<MdAddCircle />} onClick={() => setShowTreatmentModal(true)}>
+                    Add Log
+                  </Button>
+                </div>
+
+                {loadingLogs ? (
+                  Array.from({ length: 2 }).map((_, i) => <SkeletonCard key={i} />)
+                ) : treatmentLogs.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '36px 20px', background: 'var(--bg-card)', borderRadius: 14, border: '1.5px dashed var(--border-color)' }}>
+                    <MdMedicalServices size={36} style={{ color: 'var(--color-emerald)', opacity: 0.4, marginBottom: 8 }} />
+                    <h4 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>No Treatments Documented Yet</h4>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 460, margin: '0 auto 16px auto' }}>
+                      Document your first fungicide spray, bio-control application, or pruning intervention to track healing over time.
+                    </p>
+                    <Button size="sm" variant="primary" leftIcon={<MdAddCircle />} onClick={() => setShowTreatmentModal(true)}>
+                      Log First Treatment
+                    </Button>
+                  </div>
+                ) : (
+                  <div className={styles.timelineWrapper}>
+                    {treatmentLogs.map((log, idx) => (
+                      <div key={log.id || idx} className={styles.timelineItem}>
+                        <div className={styles.timelineDot} />
+                        <div className={styles.timelineCard}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <h4 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                                  {log.treatmentName}
+                                </h4>
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    padding: '2px 8px',
+                                    borderRadius: 6,
+                                    background: 'rgba(59, 130, 246, 0.1)',
+                                    color: '#3B82F6'
+                                  }}
+                                >
+                                  {log.treatmentType.replace('_', ' ')}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                Applied on {log.treatmentDate ? new Date(log.treatmentDate).toLocaleDateString() : 'N/A'} by{' '}
+                                <strong>{log.appliedBy || 'Farmer'}</strong>
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: '#10B981', background: 'rgba(16, 185, 129, 0.1)', padding: '3px 8px', borderRadius: 6 }}>
+                                {log.recoveryPercentage}% Recovery
+                              </span>
+                              {(isFarmer || isAdmin) && (
+                                <button
+                                  onClick={() => handleDeleteLog(log.id)}
+                                  style={{ background: 'none', border: 'none', color: 'var(--color-danger, #EF4444)', cursor: 'pointer', padding: 4 }}
+                                  title="Delete entry"
+                                >
+                                  <MdDelete size={16} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, margin: '10px 0', background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: 8, fontSize: 12 }}>
+                            <div>
+                              <span style={{ color: 'var(--text-muted)', display: 'block' }}>Dosage:</span>
+                              <strong>{log.dosage || 'Standard label dose'}</strong>
+                            </div>
+                            <div>
+                              <span style={{ color: 'var(--text-muted)', display: 'block' }}>Cost Incurred:</span>
+                              <strong>₹{log.costInr || 0}</strong>
+                            </div>
+                            <div>
+                              <span style={{ color: 'var(--text-muted)', display: 'block' }}>Follow-Up Scan:</span>
+                              <strong>{log.followUpImageUrl ? 'Photo Attached' : 'Visual Only'}</strong>
+                            </div>
+                          </div>
+
+                          {log.notes && (
+                            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '8px 0 0 0', lineHeight: 1.5 }}>
+                              {log.notes}
+                            </p>
+                          )}
+
+                          {log.followUpImageUrl && (
+                            <div style={{ marginTop: 10, borderRadius: 8, overflow: 'hidden', maxHeight: 160, display: 'flex', background: '#000' }}>
+                              <img src={log.followUpImageUrl} alt="Follow-up leaf" style={{ maxHeight: 160, objectFit: 'contain' }} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
+                <MdBugReport size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+                <p>Select an infection case from the left list to view its complete recovery lifecycle.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB 2: AI DIAGNOSTIC LAB VIEW ─────────────────────────────────── */}
+      {activeTab === 'lab' && (
+        <div className={styles.layout}>
+          {/* Left Column: Cases List */}
+          <div>
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
+            ) : data.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 16px', background: 'var(--bg-card)', borderRadius: 12, border: '1px dashed var(--border-color)' }}>
+                <MdBugReport size={40} style={{ opacity: 0.3, marginBottom: 10, color: 'var(--color-emerald)' }} />
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>No Disease Cases Logged</p>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  {(isFarmer || isAdmin) ? 'Click "New Leaf Scan" to analyze a plant.' : 'All registered farms are currently healthy.'}
+                </p>
+              </div>
+            ) : (
+              data.map((d, i) => (
+                <motion.div
+                  key={d.id || i}
+                  className={`${styles.card} ${selected?.id === d.id ? styles.cardActive : ''}`}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  onClick={() => setSelected(d)}
+                >
+                  <div className={styles.cardTop}>
+                    <Badge variant={statusVariant(d.status)} dot>{d.status}</Badge>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      {d.detectedAt ? new Date(d.detectedAt).toLocaleDateString() : 'N/A'}
+                    </span>
+                  </div>
+
+                  <h4 className={styles.diseaseName}>{d.disease}</h4>
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                    {d.cropName} · {d.farmName || `Farm #${d.farmId}`}
+                  </p>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: SEVERITY_COLOR[d.severity] || 'var(--color-warning)' }}>
+                      ● {d.severity} Severity
+                    </span>
+                    {d.agronomistVerified ? (
+                      <span className={styles.verifiedBadge}><MdVerified size={13} /> Verified</span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: 'var(--color-gold)', fontWeight: 600 }}>AI Diagnosed</span>
+                    )}
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </div>
+
+          {/* Right Column: Detailed Diagnostic Specimen & Prescription */}
+          <div>
+            {selected ? (
+              <Card>
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                    <div>
+                      <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {selected.disease}
+                        {selected.agronomistVerified && (
+                          <span className={styles.verifiedBadge} title="Verified by Agronomist">
+                            <MdVerified size={14} /> Certified Agronomist Verification
+                          </span>
+                        )}
+                      </h2>
+                      <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+                        Farm: <strong>{selected.farmName || `Farm #${selected.farmId}`}</strong> · Crop: <strong>{selected.cropName}</strong>
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Badge variant={statusVariant(selected.status)} dot>{selected.status}</Badge>
+                      {(isFarmer || isAdmin) && (
+                        <button
+                          onClick={() => setDeleteId(selected.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger, #EF4444)', padding: 4 }}
+                          title="Delete record"
+                        >
+                          <MdDelete size={18} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metrics Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+                  {[
+                    { label: 'Pathogen Classification', value: selected.pathogenType || 'Fungal Pathogen' },
+                    { label: 'Severity Level', value: selected.severity, color: SEVERITY_COLOR[selected.severity] },
+                    { label: 'Foliage Area Affected', value: `${selected.affectedArea || 10}%` },
+                    { label: 'AI Diagnostic Confidence', value: `${selected.confidence || 90}%` },
+                    { label: 'Containment Zone', value: selected.containmentStatus || 'CONTAINED' },
+                    { label: 'Recovery Progress', value: `${selected.currentRecoveryPercentage || 0}% Healed` },
+                  ].map(m => (
+                    <div key={m.label} style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '12px 14px' }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                        {m.label}
+                      </p>
+                      <p style={{ fontWeight: 700, color: (m as any).color ?? 'var(--text-primary)' }}>{m.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Diagnostic Accuracy Bar */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>AI Pathology Confidence</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-emerald)' }}>{selected.confidence}% Match</span>
+                  </div>
+                  <div style={{ height: 8, background: 'var(--bg-tertiary, #1e293b)', borderRadius: 99, overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        height: '100%',
+                        width: `${selected.confidence}%`,
+                        background: 'linear-gradient(90deg, var(--color-emerald, #10B981), var(--color-gold, #D4AF37))',
+                        borderRadius: 99,
+                        transition: 'width 1s ease'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Leaf Scan Specimen Preview */}
+                {selected.imageUrl && (
+                  <div style={{ marginBottom: 20 }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>
+                      Leaf Scan Specimen Photo
+                    </p>
+                    <div style={{ maxHeight: 240, overflow: 'hidden', borderRadius: 12, border: '1px solid var(--border-color)', background: '#000', display: 'flex', justifyContent: 'center' }}>
+                      <img src={selected.imageUrl} alt="Leaf Scan" style={{ maxHeight: 240, objectFit: 'contain' }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Treatment Protocol */}
+                <div style={{ background: 'rgba(239, 68, 68, 0.06)', borderRadius: 12, padding: 16, borderLeft: '4px solid var(--color-error, #EF4444)', marginBottom: 16 }}>
+                  <h4 style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <MdShield size={18} /> AI Prescribed Remediation Protocol
+                  </h4>
+                  <p style={{ color: 'var(--text-secondary)', lineHeight: 1.65, fontSize: 14, whiteSpace: 'pre-line' }}>
+                    {selected.treatment}
+                  </p>
+                </div>
+
+                {/* Certified Agronomist Prescription Box */}
+                {selected.agronomistVerified && (
+                  <div className={styles.prescriptionCard}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <MdOutlineLocalHospital size={20} color="#3B82F6" />
+                      <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15 }}>
+                        Certified Agronomist Prescription
+                      </h4>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                        Issued by {selected.verifiedByAgronomistName || 'Registered Agronomist'}
+                      </span>
+                    </div>
+                    <p style={{ color: 'var(--text-primary)', fontSize: 14, lineHeight: 1.65, whiteSpace: 'pre-line', background: 'var(--bg-card)', padding: 12, borderRadius: 8 }}>
+                      {selected.agronomistPrescription}
+                    </p>
+                    {selected.agronomistNotes && (
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8, fontStyle: 'italic' }}>
+                        Clinical Observations: {selected.agronomistNotes}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Action Row */}
+                <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
+                  {(isAgronomist || isAdmin) && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      leftIcon={<MdOutlineLocalHospital />}
+                      onClick={() => openPrescriptionModal(selected)}
+                    >
+                      {selected.agronomistVerified ? 'Update Clinical Prescription' : 'Issue Certified Prescription'}
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<MdTimeline />}
+                    onClick={() => setActiveTab('tracking')}
+                  >
+                    View Treatment Timeline
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
+                <MdBugReport size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+                <p>Select a case to inspect full pathology metrics.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB 3: OUTBREAK & CONTAINMENT SURVEILLANCE ─────────────────────── */}
+      {activeTab === 'surveillance' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                Farm Zone Containment & Outbreak Matrix
+              </h3>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                Quarantine enforcement, contagion monitoring, and eradication status across all active parcels.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                Containment Success: <strong>{trackingSummary?.containmentSuccessRate ?? 92}%</strong>
+              </span>
+            </div>
+          </div>
+
+          <div className={styles.surveillanceGrid}>
+            {data.map(caseItem => {
+              const containment = CONTAINMENT_CONFIG[caseItem.containmentStatus || 'CONTAINED'] || CONTAINMENT_CONFIG.CONTAINED;
+              return (
+                <div key={caseItem.id} className={styles.surveillanceCard}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                    <div>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '3px 9px',
+                          borderRadius: 6,
+                          background: containment.bg,
+                          color: containment.text,
+                          border: `1px solid ${containment.border}`
+                        }}
+                      >
+                        {containment.label}
+                      </span>
+                      <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '8px 0 2px 0' }}>
+                        {caseItem.cropName}
+                      </h4>
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+                        {caseItem.farmName || `Farm #${caseItem.farmId}`}
+                      </p>
+                    </div>
+
+                    <span style={{ fontSize: 12, fontWeight: 700, color: SEVERITY_COLOR[caseItem.severity] }}>
+                      {caseItem.severity} Risk
+                    </span>
+                  </div>
+
+                  <div style={{ background: 'var(--bg-secondary)', padding: '10px 12px', borderRadius: 8, margin: '12px 0', fontSize: 13 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Pathogen:</span>
+                      <strong>{caseItem.disease}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Recovery:</span>
+                      <strong>{caseItem.currentRecoveryPercentage || 0}% Healed</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Total Cost:</span>
+                      <strong>₹{(caseItem.totalTreatmentCostInr || 0).toLocaleString('en-IN')}</strong>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      style={{ flex: 1 }}
+                      onClick={() => {
+                        setSelected(caseItem);
+                        setActiveTab('tracking');
+                      }}
+                    >
+                      Inspect Timeline
+                    </Button>
+                    {(isFarmer || isAdmin || isAgronomist) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelected(caseItem);
+                          setContainmentForm({
+                            containmentStatus: caseItem.containmentStatus || 'CONTAINED',
+                            notes: ''
+                          });
+                          setShowContainmentModal(true);
+                        }}
+                      >
+                        Adjust Status
                       </Button>
                     )}
-                    <Button variant="outline" size="sm" onClick={() => handleUpdateStatus('Resolved')}>
-                      Mark as Resolved
-                    </Button>
-                  </>
-                )}
-
-                {/* Agronomist Prescription Trigger */}
-                {(isAgronomist || isAdmin) && (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    leftIcon={<MdOutlineLocalHospital />}
-                    onClick={() => openPrescriptionModal(selected)}
-                  >
-                    {selected.agronomistVerified ? 'Update Prescription' : 'Issue Certified Prescription'}
-                  </Button>
-                )}
-              </div>
-            </Card>
-          ) : (
-            <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
-              <MdBugReport size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
-              <p>Select a disease detection case to view complete pathology metrics and prescriptions.</p>
-            </div>
-          )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* SCAN CROP LEAF MODAL (FARMER & ADMIN) */}
+      {/* ─── MODAL 1: NEW LEAF SCANNER (FARMER & ADMIN) ────────────────────── */}
       <Modal
         isOpen={showUploadModal}
         onClose={() => { if (!scanning) setShowUploadModal(false); }}
-        title="AI Crop Leaf Pathology Scanner"
+        title="AI Foliar Disease Diagnosis Scanner"
         size="lg"
         footer={
           <>
@@ -484,7 +1150,6 @@ export default function DiseasePage() {
         }
       >
         <form onSubmit={handleScanSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Farm Selection */}
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
               Select Affected Farm Plot *
@@ -502,7 +1167,6 @@ export default function DiseasePage() {
             </select>
           </div>
 
-          {/* Crop Selection */}
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
               Crop Variety
@@ -525,16 +1189,15 @@ export default function DiseasePage() {
           {!scanForm.cropId && (
             <Input
               label="Or Optional Crop Name (Leave blank for AI auto-identification)"
-              placeholder="e.g. Leave blank or enter Tomato, Potato, Wheat, Rice..."
+              placeholder="e.g. Tomato, Potato, Wheat, Rice, Chili..."
               value={scanForm.cropName}
               onChange={e => setScanForm({ ...scanForm, cropName: e.target.value })}
             />
           )}
 
-          {/* Quick Presets for Instant Testing */}
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
-              Quick Presets (Click to Auto-fill symptoms):
+              Quick Presets (Click to auto-fill symptoms):
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {SAMPLE_LEAF_PRESETS.map((p, idx) => (
@@ -550,15 +1213,13 @@ export default function DiseasePage() {
             </div>
           </div>
 
-          {/* Observed Symptoms */}
           <Input
             label="Observed Foliar Symptoms / Notes"
-            placeholder="e.g. Concentric target spots on lower leaves with yellow margins"
+            placeholder="e.g. Concentric target spots on lower leaves with yellow halo margins"
             value={scanForm.notes}
             onChange={e => setScanForm({ ...scanForm, notes: e.target.value })}
           />
 
-          {/* Image Upload Area */}
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
               Upload Leaf Specimen Photo
@@ -567,7 +1228,7 @@ export default function DiseasePage() {
               <div className={styles.scannerBox}>
                 <div className={styles.scannerBeam} />
                 <p style={{ color: 'var(--color-emerald)', fontSize: 13, fontWeight: 700, zIndex: 10 }}>
-                  Scanning leaf pathology signatures...
+                  Scanning foliage pathology signatures...
                 </p>
               </div>
             ) : scanForm.imageUrl ? (
@@ -599,7 +1260,194 @@ export default function DiseasePage() {
         </form>
       </Modal>
 
-      {/* CLINICAL PRESCRIPTION MODAL (AGRONOMIST & ADMIN) */}
+      {/* ─── MODAL 2: LOG TREATMENT APPLICATION (FARMER & AGRONOMIST) ───────── */}
+      <Modal
+        isOpen={showTreatmentModal}
+        onClose={() => setShowTreatmentModal(false)}
+        title={`Log Treatment Application: ${selected?.disease || 'Infection'}`}
+        size="lg"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setShowTreatmentModal(false)}>Cancel</Button>
+            <Button onClick={handleTreatmentSubmit}>Save & Update Recovery</Button>
+          </>
+        }
+      >
+        <form onSubmit={handleTreatmentSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+              Quick Presets (Common Agricultural Interventions):
+            </label>
+            <div className={styles.chipGroup}>
+              {TREATMENT_PRESETS.map((p, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  className={styles.chip}
+                  onClick={() => setTreatmentForm(prev => ({
+                    ...prev,
+                    treatmentName: p.name,
+                    treatmentType: p.type,
+                    dosage: p.dose
+                  }))}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Input
+            label="Treatment Name / Chemical Compound *"
+            placeholder="e.g. Mancozeb 75% WP, Neem Oil 1500ppm, Copper Oxychloride"
+            value={treatmentForm.treatmentName}
+            onChange={e => setTreatmentForm({ ...treatmentForm, treatmentName: e.target.value })}
+            required
+          />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+                Remediation Category
+              </label>
+              <select
+                style={{ width: '100%', padding: '11px 14px', border: '1.5px solid var(--border-color)', borderRadius: 10, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14 }}
+                value={treatmentForm.treatmentType}
+                onChange={e => setTreatmentForm({ ...treatmentForm, treatmentType: e.target.value as TreatmentType })}
+              >
+                <option value="CHEMICAL_FUNGICIDE">Chemical Fungicide / Bactericide</option>
+                <option value="ORGANIC_BIOCONTROL">Organic Bio-control (Neem, Trichoderma)</option>
+                <option value="CULTURAL_PRUNING">Cultural / Foliage Pruning</option>
+                <option value="NUTRITIONAL_BOOST">Nutritional / Immunity Booster</option>
+              </select>
+            </div>
+
+            <Input
+              label="Dosage / Application Rate"
+              placeholder="e.g. 2.5 g / Liter water, 500 ml/acre"
+              value={treatmentForm.dosage}
+              onChange={e => setTreatmentForm({ ...treatmentForm, dosage: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Input
+              label="Application Date & Time"
+              type="datetime-local"
+              value={treatmentForm.treatmentDate}
+              onChange={e => setTreatmentForm({ ...treatmentForm, treatmentDate: e.target.value })}
+            />
+
+            <Input
+              label="Treatment Expense (₹ INR)"
+              type="number"
+              placeholder="e.g. 450"
+              value={treatmentForm.costInr}
+              onChange={e => setTreatmentForm({ ...treatmentForm, costInr: e.target.value })}
+            />
+          </div>
+
+          {/* Recovery Slider */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                Estimated Recovery Progress (Post-Treatment)
+              </label>
+              <span style={{ fontSize: 14, fontWeight: 800, color: treatmentForm.recoveryPercentage >= 100 ? '#10B981' : 'var(--color-emerald)' }}>
+                {treatmentForm.recoveryPercentage}% {treatmentForm.recoveryPercentage >= 100 ? '(Full Remission)' : ''}
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={treatmentForm.recoveryPercentage}
+              onChange={e => setTreatmentForm({ ...treatmentForm, recoveryPercentage: Number(e.target.value) })}
+              style={{ width: '100%', accentColor: 'var(--color-emerald)', cursor: 'pointer' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+              <span>0% (No Change)</span>
+              <span>50% (Healing)</span>
+              <span>100% (Full Cure)</span>
+            </div>
+          </div>
+
+          {/* Follow-up Leaf Photo Upload */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+              Upload Follow-Up Leaf Progress Photo (Optional)
+            </label>
+            {treatmentForm.followUpImageUrl ? (
+              <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-color)', maxHeight: 180, display: 'flex', justifyContent: 'center', background: '#000' }}>
+                <img src={treatmentForm.followUpImageUrl} alt="Follow-up leaf" style={{ maxHeight: 180, objectFit: 'contain' }} />
+                <button
+                  type="button"
+                  onClick={() => setTreatmentForm(prev => ({ ...prev, followUpImageUrl: '' }))}
+                  style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 12 }}
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <label className={styles.dropzone} style={{ padding: '16px' }}>
+                <MdCameraAlt size={28} color="var(--color-emerald)" />
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13, margin: '4px 0 0 0' }}>
+                  Click to attach follow-up photo for Before & After comparison
+                </p>
+                <input type="file" accept="image/*" onChange={handleTreatmentFollowUpImage} style={{ display: 'none' }} />
+              </label>
+            )}
+          </div>
+
+          <Input
+            label="Field Observations / Weather During Spray"
+            placeholder="e.g. Applied during clear morning, no rain expected for 24h. Lower leaves cleared."
+            value={treatmentForm.notes}
+            onChange={e => setTreatmentForm({ ...treatmentForm, notes: e.target.value })}
+          />
+        </form>
+      </Modal>
+
+      {/* ─── MODAL 3: CONTAINMENT STATUS ADJUSTMENT ─────────────────────────── */}
+      <Modal
+        isOpen={showContainmentModal}
+        onClose={() => setShowContainmentModal(false)}
+        title={`Containment Protocol: ${selected?.disease || 'Infection'}`}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setShowContainmentModal(false)}>Cancel</Button>
+            <Button onClick={handleContainmentSubmit}>Update Status</Button>
+          </>
+        }
+      >
+        <form onSubmit={handleContainmentSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+              Containment Classification *
+            </label>
+            <select
+              style={{ width: '100%', padding: '11px 14px', border: '1.5px solid var(--border-color)', borderRadius: 10, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14 }}
+              value={containmentForm.containmentStatus}
+              onChange={e => setContainmentForm({ ...containmentForm, containmentStatus: e.target.value as ContainmentStatus })}
+            >
+              <option value="CONTAINED">Contained - Infection isolated to target rows</option>
+              <option value="SPREADING">Spreading - Secondary spots observed on adjacent plots</option>
+              <option value="QUARANTINED">Quarantined Plot - Access restricted, mandatory protective spray</option>
+              <option value="ERADICATED">Eradicated - Full pathogen clearance, plot released</option>
+            </select>
+          </div>
+
+          <Input
+            label="Epidemiological Notes"
+            placeholder="e.g. Wind conditions favorable; adjacent wheat parcels sprayed as prophylactic."
+            value={containmentForm.notes}
+            onChange={e => setContainmentForm({ ...containmentForm, notes: e.target.value })}
+          />
+        </form>
+      </Modal>
+
+      {/* ─── MODAL 4: CLINICAL PRESCRIPTION MODAL (AGRONOMIST & ADMIN) ──────── */}
       <Modal
         isOpen={showPrescribeModal}
         onClose={() => setShowPrescribeModal(false)}
@@ -663,7 +1511,7 @@ export default function DiseasePage() {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         title="Delete Disease Record"
-        message="Are you sure you want to permanently delete this disease diagnosis? This action cannot be undone."
+        message="Are you sure you want to permanently delete this disease diagnosis? All associated treatment logs will also be removed."
       />
     </div>
   );
