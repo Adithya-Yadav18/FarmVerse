@@ -44,6 +44,9 @@ public class Farm {
     @JsonProperty("areaUnit")
     private String areaUnit = "hectares";
 
+    private Double latitude;
+    private Double longitude;
+
     // NEW: Link to the Crop table (One Farm has Many Crops)
     @OneToMany(mappedBy = "farm", fetch = jakarta.persistence.FetchType.EAGER)
     private List<Crop> cropEntities = new ArrayList<>();

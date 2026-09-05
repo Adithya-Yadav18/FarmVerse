@@ -261,6 +261,72 @@ export interface ReportStats {
   totalDownloads: number;
 }
 
+// ─── Satellite NDVI & Multispectral ───────────────────────────────────────────
+export interface NdviGridCell {
+  row: number;
+  col: number;
+  quadrantName: string;
+  ndvi: number;
+  ndwi: number;
+  chlorophyll: number;
+  status: 'Optimal' | 'Healthy' | 'Stress' | 'Critical' | string;
+  color: string;
+  bounds: [[number, number], [number, number]]; // [[south, west], [north, east]]
+  recommendation?: string;
+}
+
+export interface SatelliteNdviRecord {
+  id: number;
+  farmId: number;
+  farmName: string;
+  farmLocation: string;
+  centerLat: number;
+  centerLng: number;
+  captureDate: string;
+  satelliteSource: string;
+  cloudCoveragePercent: number;
+  meanNdvi: number;
+  minNdvi: number;
+  maxNdvi: number;
+  ndwiMoistureIndex: number;
+  chlorophyllIndex: number;
+  canopyVigourRating: 'Excellent' | 'Healthy' | 'Moderate Stress' | 'Severe Stress' | string;
+  anomalyDetected: boolean;
+  anomalyDetails?: string;
+  gridCells: NdviGridCell[];
+  farmBounds?: [[number, number], [number, number]];
+}
+
+export interface NdviHistoricalPoint {
+  date: string;
+  meanNdvi: number;
+  ndwi: number;
+  vigourScore: number;
+  passLabel: string;
+}
+
+export interface SatelliteOverviewStats {
+  totalFarmsMonitored: number;
+  averageCanopyNdvi: number;
+  activeAnomaliesCount: number;
+  highVigourPercentage: number;
+  satellitePassCadenceDays: number;
+  lastSatellitePass: string;
+  satelliteConstellation: string;
+}
+
+export interface PublicCanopyBadge {
+  farmName: string;
+  location: string;
+  primaryCrop: string;
+  canopyVigourRating: string;
+  meanNdvi: number;
+  certifiedSustainable: boolean;
+  verificationHash: string;
+  verifiedDate: string;
+}
+
+
 
 // ─── Dashboard Stats ──────────────────────────────────────────────────────────
 export interface DashboardStats {

@@ -65,6 +65,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/weather/**").permitAll() // NEW: Make weather public
                 .requestMatchers("/api/irrigation/iot/**").permitAll() // Real Hardware Device Protocol & Ingestion
+                .requestMatchers("/api/satellite/public-badge/**").permitAll() // Public Verification Badge
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
             )

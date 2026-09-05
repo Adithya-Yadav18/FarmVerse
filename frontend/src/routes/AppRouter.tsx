@@ -17,6 +17,7 @@ const WeatherPage     = lazy(() => import('../pages/Weather/WeatherPage'));
 const IrrigationPage  = lazy(() => import('../pages/Irrigation/IrrigationPage'));
 const DiseasePage     = lazy(() => import('../pages/Disease/DiseasePage'));
 const AIPage          = lazy(() => import('../pages/AI/AIPage'));
+const SatellitePage   = lazy(() => import('../pages/Satellite/SatellitePage'));
 const NotificationsPage = lazy(() => import('../pages/Notifications/NotificationsPage'));
 const ReportsPage     = lazy(() => import('../pages/Reports/ReportsPage'));
 const ProfilePage     = lazy(() => import('../pages/Profile/ProfilePage'));
@@ -51,6 +52,7 @@ export function AppRouter() {
               {/* Universal Access (All Roles) */}
               <Route path="/dashboard"          element={<DashboardPage />} />
               <Route path="/weather"            element={<WeatherPage />} />
+              <Route path="/satellite"          element={<SatellitePage />} />
               <Route path="/ai-recommendations" element={<AIPage />} />
               <Route path="/notifications"      element={<NotificationsPage />} />
               <Route path="/profile"            element={<ProfilePage />} />

@@ -1,0 +1,146 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.mapCard {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+}
+
+.mapWrapper {
+  position: relative;
+  width: 100%;
+  height: 520px;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  background: #111827;
+}
+
+.mapElement {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.mapControlsOverlay {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 280px;
+}
+
+.controlBox {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: #F8FAFC;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.controlTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94A3B8;
+  margin-bottom: 8px;
+}
+
+.layerButtonGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.layerButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  color: #E2E8F0;
+  transition: all 0.2s ease;
+}
+
+.layerButton:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.layerButtonActive {
+  background: #107850 !important;
+  color: #FFFFFF !important;
+  border-color: #34D399 !important;
+}
+
+.sliderWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.sliderInput {
+  width: 100%;
+  accent-color: #107850;
+  cursor: pointer;
+}
+
+.legendBar {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #F8FAFC;
+}
+
+.legendGradient {
+  height: 8px;
+  border-radius: 4px;
+  margin: 6px 0;
+  background: linear-gradient(to right, #EF4444 0%, #EAB308 30%, #84CC16 60%, #22C55E 80%, #107850 100%);
+}
+
+.legendLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #94A3B8;
+  font-weight: 600;
+}
+
+.selectedCellCard {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.badgeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
