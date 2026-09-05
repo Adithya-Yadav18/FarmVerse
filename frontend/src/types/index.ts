@@ -203,27 +203,64 @@ export interface CropRecommendation {
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 export type NotificationSeverity = 'info' | 'warning' | 'error' | 'success';
+export type NotificationCategory = 'DISEASE' | 'SOIL' | 'WEATHER' | 'IRRIGATION' | 'PRESCRIPTION' | 'SYSTEM';
 
 export interface Notification {
   id: string;
+  userId?: string | number;
   title: string;
   message: string;
   type: NotificationSeverity;
+  category?: NotificationCategory;
   read: boolean;
   createdAt: string;
   link?: string;
 }
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
+export type ReportType =
+  | 'AGRONOMY_COMPREHENSIVE'
+  | 'SOIL_NUTRIENT'
+  | 'DISEASE_SURVEILLANCE'
+  | 'IRRIGATION_EFFICIENCY'
+  | 'CROP_CYCLE_SUMMARY';
+
 export interface Report {
-  id: string;
-  title: string;
-  type: 'Yield' | 'Soil' | 'Water' | 'Financial' | 'Pest';
-  period: string;
+  id: string | number;
+  reportTitle?: string;
+  title?: string;
+  reportType?: ReportType | string;
+  type?: 'Yield' | 'Soil' | 'Water' | 'Financial' | 'Pest' | string;
+  dateRange?: string;
+  period?: string;
+  format?: string;
+  fileSize?: string;
+  size?: string;
+  status: 'Ready' | 'Generating' | 'Failed' | 'READY' | 'GENERATING' | 'FAILED' | string;
+  summary?: string;
+  downloadCount?: number;
   generatedAt: string;
-  status: 'Ready' | 'Generating' | 'Failed';
+  farmName?: string;
+  generatedByName?: string;
   fileUrl?: string;
 }
+
+export interface GenerateReportRequest {
+  farmId?: number | string;
+  reportType: string;
+  dateRange?: string;
+  notes?: string;
+}
+
+export interface ReportStats {
+  totalReports: number;
+  comprehensiveCount: number;
+  soilCount: number;
+  diseaseCount: number;
+  irrigationCount: number;
+  totalDownloads: number;
+}
+
 
 // ─── Dashboard Stats ──────────────────────────────────────────────────────────
 export interface DashboardStats {
