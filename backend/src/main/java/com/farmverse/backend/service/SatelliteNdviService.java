@@ -90,7 +90,7 @@ public class SatelliteNdviService {
     }
 
     public List<SatelliteNdviDTO.NdviHistoricalPointDto> getNdviHistory(Long farmId, String userEmail) {
-        Farm farm = resolveFarmWithPermission(farmId, userEmail);
+        resolveFarmWithPermission(farmId, userEmail);
 
         List<SatelliteNdviDTO.NdviHistoricalPointDto> history = new ArrayList<>();
         LocalDate baseDate = LocalDate.now();
