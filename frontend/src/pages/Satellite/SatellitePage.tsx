@@ -3,48 +3,31 @@ import { motion } from 'framer-motion';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  MdSatelliteAlt,
-  MdLayers,
-  MdRefresh,
-  MdWarning,
-  MdCheckCircle,
-  MdWaterDrop,
-  MdScience,
-  MdAgriculture,
-  MdVerified,
-  MdSend,
-  MdTune,
-  MdLocationOn,
-} from 'react-icons/md';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer
 } from 'recharts';
+import {
+  MdSatelliteAlt, MdRefresh, MdLocationOn, MdLayers,
+  MdWarning, MdVerified, MdSend, MdInfo
+} from 'react-icons/md';
+import { toast } from 'react-hot-toast';
+
 import { PageHeader } from '../../components/ui/PageHeader/PageHeader';
+import { Card } from '../../components/ui/Card/Card';
 import { Button } from '../../components/ui/Button/Button';
 import { Badge } from '../../components/ui/Badge/Badge';
-import { Card } from '../../components/ui/Card/Card';
 import { Modal } from '../../components/ui/Modal/Modal';
-import { useAuth } from '../../context/AuthContext';
-import { satelliteService } from '../../services/satelliteService';
+import { Skeleton } from '../../components/ui/Skeleton/Skeleton';
+
 import api from '../../services/api';
+import { satelliteService } from '../../services/satelliteService';
+import { useAuth } from '../../context/AuthContext';
 import type {
-  Farm,
-  SatelliteNdviRecord,
-  NdviGridCell,
-  NdviHistoricalPoint,
-  SatelliteOverviewStats,
-  PublicCanopyBadge,
+  Farm, SatelliteNdviRecord, NdviGridCell, NdviHistoricalPoint,
+  SatelliteOverviewStats, PublicCanopyBadge, UserRole
 } from '../../types';
-import toast from 'react-hot-toast';
 import styles from './SatellitePage.module.css';
 
-// Fix Leaflet Default Icon URLs for bundlers
+// Fix Leaflet marker icons in bundlers
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -56,10 +39,23 @@ type MapLayerMode = 'optical' | 'ndvi' | 'ndwi' | 'grid';
 
 export default function SatellitePage() {
   const { user } = useAuth();
-  const isFarmer = user?.role === 'Farmer';
-  const isAgronomist = user?.role === 'Agronomist';
-  const isAdmin = user?.role === 'Admin';
-  const isNormalUser = user?.role === 'Normal User';
+  const rawRole = (user?.role || 'Farmer').replace('ROLE_', '').replace('_', ' ');
+  const userRole: UserRole =
+    rawRole.toLowerCase().includes('normal') || rawRole.toLowerCase() === 'user'
+      ? 'Normal User'
+      : rawRole.toLowerCase().includes('admin')
+      ? 'Admin'
+      : rawRole.toLowerCase().includes('agronomist')
+      ? 'Agronomist'
+      : 'Farmer';
+
+  // Active Role Perspective (Allows live role switching to test all 4 perspectives)
+  const [activePerspective, setActivePerspective] = useState<UserRole>(userRole);
+
+  const isFarmer = activePerspective === 'Farmer';
+  const isAgronomist = activePerspective === 'Agronomist';
+  const isAdmin = activePerspective === 'Admin';
+  const isNormalUser = activePerspective === 'Normal User';
 
   // Farms state
   const [farms, setFarms] = useState<Farm[]>([]);
@@ -120,7 +116,7 @@ export default function SatellitePage() {
       if (latestRes.status === 'fulfilled') {
         setNdviData(latestRes.value);
         if (latestRes.value.gridCells?.length > 0) {
-          // Select stressed cell or center cell
+          // Default to stressed cell or center cell
           const stressed = latestRes.value.gridCells.find(c => c.status === 'Stress' || c.status === 'Critical');
           setSelectedCell(stressed || latestRes.value.gridCells[0]);
         }
@@ -147,47 +143,64 @@ export default function SatellitePage() {
     }
   }, [selectedFarmId, loadSatelliteTelemetry]);
 
+  // Farm switch handler
+  const handleFarmChange = (newFarmId: number) => {
+    setSelectedFarmId(newFarmId);
+    loadSatelliteTelemetry(newFarmId);
+  };
+
   // 3. Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
-      const defaultCenter: L.LatLngExpression = [28.6139, 77.2090];
+      const defaultCenter: L.LatLngExpression = [12.2958, 76.6394];
       const map = L.map(mapContainerRef.current, {
         center: defaultCenter,
         zoom: 16,
         zoomControl: true,
       });
 
-      // Esri World Imagery (High-Resolution Satellite Basemap - 100% Free)
+      // Esri World Imagery (High-Resolution Global Satellite Photography - 100% Free)
       L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 19,
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP',
       }).addTo(map);
 
-      // Layer group for NDVI/NDWI Grid polygons
+      // Layer group for NDVI/NDWI Grid polygons and center marker
       const layerGroup = L.layerGroup().addTo(map);
       gridLayerGroupRef.current = layerGroup;
       mapInstanceRef.current = map;
     }
 
     return () => {
-      // Don't destroy on every re-render, only on complete unmount
+      // Keep map alive between state renders
     };
   }, []);
 
-  // 4. Update Map Center & Polygons when Telemetry or Layer Mode changes
+  // 4. Update Map Center & Overlays when Telemetry or Layer Mode changes
   useEffect(() => {
     const map = mapInstanceRef.current;
     const layerGroup = gridLayerGroupRef.current;
     if (!map || !layerGroup || !ndviData) return;
 
-    // Center map on Farm coordinates
+    // Smoothly fly camera to the farm's exact coordinates
     const center: L.LatLngExpression = [ndviData.centerLat, ndviData.centerLng];
-    map.setView(center, 16, { animate: true });
+    map.flyTo(center, 16, { duration: 1.5 });
 
-    // Clear previous raster/polygon overlays
+    // Clear previous overlays
     layerGroup.clearLayers();
+
+    // Center Farm Marker Pin with Interactive Popup
+    const centerMarker = L.marker(center).addTo(layerGroup);
+    centerMarker.bindPopup(`
+      <div style="font-family: sans-serif; min-width: 170px; color: #0f172a; padding: 2px;">
+        <h4 style="margin: 0 0 4px 0; color: #107850; font-size: 14px;">🛰️ ${ndviData.farmName}</h4>
+        <p style="margin: 0 0 6px 0; font-size: 12px; color: #475569;">${ndviData.farmLocation || 'Field Centroid'}</p>
+        <div style="font-size: 12px; font-weight: 600;">Mean NDVI: <strong style="color: #16a34a;">${ndviData.meanNdvi}</strong> (${ndviData.canopyVigourRating})</div>
+        <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Coords: ${ndviData.centerLat.toFixed(4)}, ${ndviData.centerLng.toFixed(4)}</div>
+      </div>
+    `);
 
     // If Optical mode is selected, only show pure satellite imagery
     if (layerMode === 'optical') return;
@@ -219,26 +232,19 @@ export default function SatellitePage() {
 
         rect.bindTooltip(
           `<strong>${cell.quadrantName}</strong><br/>NDVI: ${cell.ndvi} (${cell.status})<br/>NDWI: ${cell.ndwi}`,
-          { direction: 'top', opacity: 0.95 }
+          { permanent: false, direction: 'top', opacity: 0.9 }
         );
 
         rect.addTo(layerGroup);
       });
     }
-
-    // Add Center Farm Marker
-    const marker = L.marker([ndviData.centerLat, ndviData.centerLng]);
-    marker.bindPopup(
-      `<strong>${ndviData.farmName}</strong><br/>${ndviData.farmLocation}<br/>Mean NDVI: ${ndviData.meanNdvi}`
-    );
-    marker.addTo(layerGroup);
   }, [ndviData, layerMode, overlayOpacity]);
 
-  // Handle Satellite Re-Scan
+  // Handle Sentinel-2 Rescan Trigger
   const handleTriggerRescan = async () => {
     if (!selectedFarmId) return;
     setIsRescanning(true);
-    const toastId = toast.loading('Connecting to Sentinel-2 orbit telemetry & compiling multispectral bands...');
+    const toastId = toast.loading('Connecting to Sentinel-2 orbit telemetry & compiling multispectral reflectance...');
     try {
       const updated = await satelliteService.triggerRescan(selectedFarmId);
       setNdviData(updated);
@@ -260,7 +266,6 @@ export default function SatellitePage() {
     }
     setIsSendingAdvisory(true);
     try {
-      // In a full workflow, this fires a targeted notification to the farmer
       await api.post('/notifications', {
         title: `Agronomist Directive: ${selectedCell?.quadrantName || 'Field Zone'}`,
         message: advisoryNote,
@@ -285,11 +290,11 @@ export default function SatellitePage() {
         breadcrumbs={[{ label: 'Satellite NDVI' }]}
         actions={
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {/* Farm Selector (Farmer, Agronomist, Admin) */}
+            {/* Farm Selector */}
             {farms.length > 0 && !isNormalUser && (
               <select
                 value={selectedFarmId || ''}
-                onChange={e => setSelectedFarmId(Number(e.target.value))}
+                onChange={e => handleFarmChange(Number(e.target.value))}
                 style={{
                   padding: '8px 12px',
                   borderRadius: 8,
@@ -331,7 +336,124 @@ export default function SatellitePage() {
         }
       />
 
-      {/* 4-Role Specific Overview Banner */}
+      {/* Interactive 4-Role Perspective Selector Bar */}
+      <div className={styles.roleBar}>
+        <span className={styles.roleBarLabel}>Role Perspective:</span>
+        <button
+          type="button"
+          className={`${styles.roleTab} ${isFarmer ? styles.roleTabActive : ''}`}
+          onClick={() => setActivePerspective('Farmer')}
+        >
+          🧑‍🌾 Farmer (My Farm Focus)
+        </button>
+        <button
+          type="button"
+          className={`${styles.roleTab} ${isAgronomist ? styles.roleTabActive : ''}`}
+          onClick={() => setActivePerspective('Agronomist')}
+        >
+          🔬 Agronomist (Regional Directives)
+        </button>
+        <button
+          type="button"
+          className={`${styles.roleTab} ${isAdmin ? styles.roleTabActive : ''}`}
+          onClick={() => setActivePerspective('Admin')}
+        >
+          🛡️ Admin (Constellation & Tile Cache)
+        </button>
+        <button
+          type="button"
+          className={`${styles.roleTab} ${isNormalUser ? styles.roleTabActive : ''}`}
+          onClick={() => setActivePerspective('Normal User')}
+        >
+          🏷️ Normal User (Canopy Certification Badge)
+        </button>
+      </div>
+
+      {/* Dynamic Role Capability Explainer Banner */}
+      <div className={styles.roleInfoBanner}>
+        {isFarmer && (
+          <div>
+            <strong>🧑‍🌾 Farmer Capability:</strong> View high-resolution multispectral scans of your owned farm, inspect 4x4 sub-plot telemetry for localized plant stress, and request on-demand Sentinel-2 pass rescans.
+          </div>
+        )}
+        {isAgronomist && (
+          <div>
+            <strong>🔬 Agronomist Capability:</strong> Multi-farm regional surveillance across districts, evaluate cross-farm vegetative stress, and issue coordinate-targeted field prescriptions directly to farm operators.
+          </div>
+        )}
+        {isAdmin && (
+          <div>
+            <strong>🛡️ Admin Capability:</strong> Platform-wide satellite telemetry, ESA Sentinel-2A / Sentinel-2B constellation health tracking, tile cache performance monitoring, and multi-district canopy distribution.
+          </div>
+        )}
+        {isNormalUser && (
+          <div>
+            <strong>🏷️ Normal User / Buyer Capability:</strong> Inspect public crop vigour ratings, verify eco-friendly farming practices, and authenticate cryptographic sustainability certificates before purchasing produce.
+          </div>
+        )}
+      </div>
+
+      {/* Admin Constellation & Tile Performance Metric Cards */}
+      {isAdmin && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+                🛰️
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                  Orbital Constellation
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
+                  ESA Sentinel-2A & 2B
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--color-success)', fontWeight: 600 }}>
+                  ● Active Telemetry (5-day cadence)
+                </div>
+              </div>
+            </div>
+          </Card>
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(16, 120, 80, 0.15)', color: 'var(--color-emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+                ⚡
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                  Esri Tile Cache
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
+                  98.4% Cache Hit Rate
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  Average Latency: 38ms
+                </div>
+              </div>
+            </div>
+          </Card>
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(234, 179, 8, 0.15)', color: '#EAB308', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+                🗺️
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                  Spatial Resolution
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
+                  Sub-meter Optical / 10m Multispectral
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  B4 (665nm) + B8 (842nm) NIR
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Normal User Sustainable Canopy Badge */}
       {isNormalUser && publicBadge && (
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
@@ -347,7 +469,7 @@ export default function SatellitePage() {
                   <Badge variant="success" dot>Certified Green</Badge>
                 </div>
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-                  Vegetation Vigour Rating: <strong>{publicBadge.canopyVigourRating}</strong> (Mean NDVI: <strong>{publicBadge.meanNdvi}</strong>) • Verified {publicBadge.verifiedDate}
+                  Location: <strong>{publicBadge.location}</strong> • Crop: <strong>{publicBadge.primaryCrop}</strong> • Vigour: <strong>{publicBadge.canopyVigourRating}</strong> (Mean NDVI: <strong>{publicBadge.meanNdvi}</strong>) • Verified {publicBadge.verifiedDate}
                 </p>
               </div>
             </div>
@@ -358,7 +480,7 @@ export default function SatellitePage() {
         </Card>
       )}
 
-      {/* KPI Cards Strip */}
+      {/* 4 Live KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -371,10 +493,10 @@ export default function SatellitePage() {
               </p>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                 <h3 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                  {ndviData ? ndviData.meanNdvi.toFixed(2) : '0.72'}
+                  {ndviData ? ndviData.meanNdvi.toFixed(2) : '0.78'}
                 </h3>
                 <span style={{ fontSize: 12, color: 'var(--color-success)', fontWeight: 700 }}>
-                  {ndviData?.canopyVigourRating || 'Healthy'}
+                  {ndviData?.canopyVigourRating || 'Optimal'}
                 </span>
               </div>
             </div>
@@ -384,64 +506,79 @@ export default function SatellitePage() {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(2, 132, 199, 0.12)', color: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-              <MdWaterDrop />
+              💧
             </div>
             <div>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 2px 0' }}>
                 Canopy Moisture (NDWI)
               </p>
-              <h3 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                {ndviData?.ndwiMoistureIndex ? ndviData.ndwiMoistureIndex.toFixed(2) : '0.48'}
-              </h3>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <h3 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  {ndviData ? ndviData.ndwiMoistureIndex.toFixed(2) : '0.54'}
+                </h3>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  Hydrated
+                </span>
+              </div>
             </div>
           </div>
         </Card>
 
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(139, 92, 246, 0.12)', color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-              <MdScience />
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(168, 85, 247, 0.12)', color: '#A855F7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+              🧪
             </div>
             <div>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 2px 0' }}>
                 Chlorophyll (CARI)
               </p>
-              <h3 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                {ndviData?.chlorophyllIndex ? `${ndviData.chlorophyllIndex.toFixed(1)} ug/cm²` : '3.9 ug/cm²'}
-              </h3>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <h3 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  {ndviData ? ndviData.chlorophyllIndex.toFixed(1) : '4.4'}
+                </h3>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  ug/cm²
+                </span>
+              </div>
             </div>
           </div>
         </Card>
 
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(217, 160, 30, 0.15)', color: '#B47E10', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-              <MdAgriculture />
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(234, 179, 8, 0.12)', color: '#EAB308', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+              🚜
             </div>
             <div>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 2px 0' }}>
                 Cloud Cover & Pass
               </p>
-              <h3 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                {ndviData ? `${ndviData.cloudCoveragePercent}% Clear` : '1.4% Clear'}
-              </h3>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <h3 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  {ndviData ? `${ndviData.cloudCoveragePercent.toFixed(1)}%` : '0.8%'}
+                </h3>
+                <span style={{ fontSize: 12, color: 'var(--color-success)', fontWeight: 700 }}>
+                  Clear
+                </span>
+              </div>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Main Interactive Map & Quadrant Inspector */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: 20 }}>
-        {/* Leaflet Interactive Satellite Map */}
+      {/* Main Satellite Workspace: Leaflet Map & Quadrant Telemetry */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+        {/* Leaflet Satellite Map Card */}
         <div className={styles.mapCard}>
           <div className={styles.mapWrapper}>
             <div ref={mapContainerRef} className={styles.mapElement} />
 
-            {/* Floating Top-Right Layer Switcher & Opacity Slider */}
+            {/* Top-Right Multispectral Controls Overlay */}
             <div className={styles.mapControlsOverlay}>
               <div className={styles.controlBox}>
                 <div className={styles.controlTitle}>
-                  <MdLayers style={{ verticalAlign: 'middle', marginRight: 4 }} /> Multispectral Layer
+                  <MdLayers style={{ verticalAlign: 'middle' }} /> Multispectral Layer
                 </div>
                 <div className={styles.layerButtonGroup}>
                   <button
@@ -505,7 +642,7 @@ export default function SatellitePage() {
                 <div className={styles.legendGradient} />
                 <div className={styles.legendLabels}>
                   <span>0.1 (Barren/Stress)</span>
-                  <span>0.4 (Moderate)</span>
+                  <span>0.5 (Moderate)</span>
                   <span>0.9 (Dense Green)</span>
                 </div>
               </div>
@@ -580,7 +717,7 @@ export default function SatellitePage() {
               </div>
             ) : (
               <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                Click any cell on the satellite grid to inspect quadrant telemetry.
+                Click any quadrant on the satellite map to inspect localized telemetry.
               </p>
             )}
           </Card>
@@ -589,7 +726,7 @@ export default function SatellitePage() {
           {(isAgronomist || isAdmin) && overviewStats && (
             <Card>
               <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>
-                District Satellite Telemetry
+                District Surveillance Telemetry
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -601,7 +738,7 @@ export default function SatellitePage() {
                   <strong style={{ color: 'var(--color-success)' }}>{overviewStats.highVigourPercentage}%</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Revisit Orbit Cadence</span>
+                  <span>Orbital Revisit Cadence</span>
                   <strong>Every {overviewStats.satellitePassCadenceDays} Days</strong>
                 </div>
               </div>
@@ -618,7 +755,7 @@ export default function SatellitePage() {
               Historical Canopy Vigour Progression (Sentinel-2 Passes)
             </h3>
             <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
-              6-week multispectral NDVI & NDWI reflectance index tracking crop phenology and biomass development.
+              6-week multispectral NDVI & NDWI reflectance index tracking crop phenology and biomass development for {ndviData?.farmName || 'this field'}.
             </p>
           </div>
           <Badge variant="success" dot>Pass 6 Complete</Badge>

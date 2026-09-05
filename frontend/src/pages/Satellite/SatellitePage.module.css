@@ -4,6 +4,66 @@
   gap: 20px;
 }
 
+.roleBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  padding: 8px 12px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.roleBarLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 4px;
+}
+
+.roleTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.roleTab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.roleTabActive {
+  background: rgba(16, 120, 80, 0.15) !important;
+  color: var(--color-emerald) !important;
+  border-color: var(--color-emerald) !important;
+}
+
+.roleInfoBanner {
+  background: var(--bg-card);
+  border-left: 4px solid var(--color-emerald);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .mapCard {
   position: relative;
   overflow: hidden;
@@ -39,7 +99,7 @@
 }
 
 .controlBox {
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 23, 42, 0.88);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 10px;
@@ -106,7 +166,7 @@
   bottom: 16px;
   left: 16px;
   z-index: 1000;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 23, 42, 0.88);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 10px;
