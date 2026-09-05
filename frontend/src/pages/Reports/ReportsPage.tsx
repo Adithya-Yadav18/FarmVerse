@@ -153,7 +153,8 @@ export default function ReportsPage() {
       });
       loadData();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error generating PDF report.';
+      const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
+      const msg = axiosErr.response?.data?.message || axiosErr.message || 'Error generating PDF report.';
       toast.error(msg);
     } finally {
       setIsGenerating(false);

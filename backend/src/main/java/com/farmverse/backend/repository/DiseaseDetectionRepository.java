@@ -14,9 +14,11 @@ public interface DiseaseDetectionRepository extends JpaRepository<DiseaseDetecti
 
     List<DiseaseDetection> findAllByOrderByDetectedAtDesc();
 
-    List<DiseaseDetection> findByFarmIdOrderByDetectedAtDesc(Long farmId);
+    @org.springframework.data.jpa.repository.Query("SELECT d FROM DiseaseDetection d WHERE d.farm.id = :farmId ORDER BY d.detectedAt DESC")
+    List<DiseaseDetection> findByFarmIdOrderByDetectedAtDesc(@org.springframework.data.repository.query.Param("farmId") Long farmId);
 
-    List<DiseaseDetection> findByCropIdOrderByDetectedAtDesc(Long cropId);
+    @org.springframework.data.jpa.repository.Query("SELECT d FROM DiseaseDetection d WHERE d.crop.id = :cropId ORDER BY d.detectedAt DESC")
+    List<DiseaseDetection> findByCropIdOrderByDetectedAtDesc(@org.springframework.data.repository.query.Param("cropId") Long cropId);
 
     List<DiseaseDetection> findByStatusOrderByDetectedAtDesc(String status);
 

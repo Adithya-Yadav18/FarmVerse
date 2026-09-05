@@ -8,9 +8,11 @@ import java.util.List;
 
 public interface SoilDataRepository extends JpaRepository<SoilData, Long> {
     
-    List<SoilData> findByFarmId(Long farmId);
+    @Query("SELECT s FROM SoilData s WHERE s.farm.id = :farmId")
+    List<SoilData> findByFarmId(@Param("farmId") Long farmId);
 
-    List<SoilData> findByFarmIdOrderByRecordedAtDesc(Long farmId);
+    @Query("SELECT s FROM SoilData s WHERE s.farm.id = :farmId ORDER BY s.recordedAt DESC")
+    List<SoilData> findByFarmIdOrderByRecordedAtDesc(@Param("farmId") Long farmId);
 
     @Query("SELECT s FROM SoilData s WHERE s.farm.farmer.user.email = :email")
     List<SoilData> findAllByFarmerEmail(@Param("email") String email);

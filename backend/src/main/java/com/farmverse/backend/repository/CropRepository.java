@@ -8,7 +8,8 @@ import java.util.List;
 
 public interface CropRepository extends JpaRepository<Crop, Long> {
     
-    List<Crop> findByFarmId(Long farmId);
+    @Query("SELECT c FROM Crop c WHERE c.farm.id = :farmId")
+    List<Crop> findByFarmId(@Param("farmId") Long farmId);
 
     // Custom query to find all crops for a specific user email
     @Query("SELECT c FROM Crop c WHERE c.farm.farmer.user.email = :email")

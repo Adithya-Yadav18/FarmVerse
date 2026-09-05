@@ -64,7 +64,8 @@ public class ReportService {
             specificFarm = farmRepository.findById(request.getFarmId())
                     .orElseThrow(() -> new IllegalArgumentException("Farm not found with id: " + request.getFarmId()));
             // Check ownership if farmer
-            if (!isStaff && specificFarm.getFarmer() != null && !user.equals(specificFarm.getFarmer().getUser())) {
+            if (!isStaff && specificFarm.getFarmer() != null && specificFarm.getFarmer().getUser() != null
+                    && !user.getId().equals(specificFarm.getFarmer().getUser().getId())) {
                 throw new AccessDeniedException("You do not have permission to generate reports for this farm.");
             }
             targetFarms.add(specificFarm);
