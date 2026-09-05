@@ -1,18 +1,31 @@
 import api from './api';
-import type { Notification, PaginatedResponse } from '../types';
+import type { Notification } from '../types';
+
+export interface UnreadCountResponse {
+  unreadCount: number;
+}
 
 export const notificationService = {
-  getAll: async (filters: Record<string, unknown> = {}): Promise<PaginatedResponse<Notification>> => {
-    const { data } = await api.get<PaginatedResponse<Notification>>('/notifications', { params: filters });
+  getNotifications: async (): Promise<Notification[]> => {
+    const { data } = await api.get<Notification[]>('/notifications');
     return data;
   },
-  markAsRead: async (id: string): Promise<void> => {
-    await api.patch(`/notifications/${id}/read`);
+
+  getUnreadCount: async (): Promise<number> => {
+    const { data } = await api.get<UnreadCountResponse>('/notifications/unread-count');
+    return data.unreadCount;
   },
+
+  markAsRead: async (id: string | number): Promise<Notification> => {
+    const { data } = await api.put<Notification>(`/notifications/${id}/read`);
+    return data;
+  },
+
   markAllAsRead: async (): Promise<void> => {
-    await api.patch('/notifications/read-all');
+    await api.put('/notifications/read-all');
   },
-  remove: async (id: string): Promise<void> => {
+
+  deleteNotification: async (id: string | number): Promise<void> => {
     await api.delete(`/notifications/${id}`);
   },
 };

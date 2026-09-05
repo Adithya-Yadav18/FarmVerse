@@ -1,20 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { MdNotifications, MdDoneAll, MdDelete, MdInfo, MdWarning, MdError, MdCheckCircle } from 'react-icons/md';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import {
+  MdNotifications,
+  MdDoneAll,
+  MdDelete,
+  MdInfo,
+  MdWarning,
+  MdError,
+  MdCheckCircle,
+  MdOpenInNew,
+  MdRefresh,
+  MdFilterList
+} from 'react-icons/md';
 import { PageHeader } from '../../components/ui/PageHeader/PageHeader';
 import { Button } from '../../components/ui/Button/Button';
 import { Badge } from '../../components/ui/Badge/Badge';
+import { useNotifications } from '../../context/NotificationContext';
 import toast from 'react-hot-toast';
 import { timeAgo } from '../../utils';
-import type { Notification, NotificationSeverity } from '../../types';
-
-const MOCK_NOTIFS: Notification[] = [
-  { id: '1', title: 'Soil Moisture Critical', message: 'Block B soil moisture has dropped below 25%. Immediate irrigation recommended.', type: 'error', read: false, createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
-  { id: '2', title: 'Disease Alert', message: 'Early blight detected in Tomato Sector 3 with 94% confidence. Treatment required.', type: 'warning', read: false, createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString() },
-  { id: '3', title: 'Harvest Complete', message: 'Wheat harvest in North Valley Farm Block C completed. Yield: 12.4 tonnes.', type: 'success', read: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString() },
-  { id: '4', title: 'Weather Advisory', message: 'Heavy rainfall expected Wednesday-Thursday. Consider rescheduling irrigation.', type: 'info', read: true, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString() },
-  { id: '5', title: 'Irrigation Completed', message: 'Zone A automatic irrigation cycle completed. 2,400 litres applied.', type: 'success', read: true, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
-];
+import type { NotificationSeverity, NotificationCategory } from '../../types';
 
 const TYPE_ICON: Record<NotificationSeverity, React.ReactNode> = {
   error: <MdError />,
@@ -23,110 +28,289 @@ const TYPE_ICON: Record<NotificationSeverity, React.ReactNode> = {
   info: <MdInfo />,
 };
 
-const TYPE_VARIANT = { error: 'error', warning: 'warning', success: 'success', info: 'info' } as const;
+type FilterType = 'all' | 'unread' | NotificationCategory;
 
 export default function NotificationsPage() {
-  const [notifs, setNotifs] = useState<Notification[]>(MOCK_NOTIFS);
-  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const navigate = useNavigate();
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    markAsRead,
+    markAllAsRead,
+    removeNotification,
+    refreshNotifications
+  } = useNotifications();
 
-  const markAll = () => { setNotifs(n => n.map(x => ({ ...x, read: true }))); toast.success('All marked as read'); };
-  const markRead = (id: string) => setNotifs(n => n.map(x => x.id === id ? { ...x, read: true } : x));
-  const remove = (id: string) => { setNotifs(n => n.filter(x => x.id !== id)); toast.success('Notification dismissed'); };
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
-  const unreadCount = notifs.filter(n => !n.read).length;
-  const filtered = notifs.filter(n => filter === 'all' || !n.read);
+  const handleMarkAll = async () => {
+    try {
+      await markAllAsRead();
+      toast.success('All notifications marked as read');
+    } catch {
+      toast.error('Failed to mark all as read');
+    }
+  };
+
+  const handleMarkRead = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    await markAsRead(id);
+  };
+
+  const handleRemove = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    await removeNotification(id);
+    toast.success('Notification dismissed');
+  };
+
+  const handleNotificationClick = async (id: string, link?: string) => {
+    await markAsRead(id);
+    if (link) {
+      navigate(link);
+    }
+  };
+
+  const filtered = notifications.filter(n => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'unread') return !n.read;
+    return n.category === activeFilter;
+  });
+
+  const categories: { key: FilterType; label: string }[] = [
+    { key: 'all', label: `All (${notifications.length})` },
+    { key: 'unread', label: `Unread (${unreadCount})` },
+    { key: 'DISEASE', label: 'Disease Alerts' },
+    { key: 'SOIL', label: 'Soil & Sensors' },
+    { key: 'IRRIGATION', label: 'Irrigation' },
+    { key: 'WEATHER', label: 'Weather' },
+    { key: 'PRESCRIPTION', label: 'Prescriptions' },
+  ];
 
   return (
     <div>
       <PageHeader
-        title="Notifications"
-        subtitle={`${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`}
+        title="Notification Center"
+        subtitle={`${unreadCount} unread alert${unreadCount !== 1 ? 's' : ''} requiring attention`}
         breadcrumbs={[{ label: 'Notifications' }]}
         actions={
-          <Button variant="outline" leftIcon={<MdDoneAll />} onClick={markAll} disabled={unreadCount === 0}>
-            Mark All Read
-          </Button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Button
+              variant="outline"
+              leftIcon={<MdRefresh className={loading ? 'animate-spin' : ''} />}
+              onClick={refreshNotifications}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="outline"
+              leftIcon={<MdDoneAll />}
+              onClick={handleMarkAll}
+              disabled={unreadCount === 0}
+            >
+              Mark All Read
+            </Button>
+          </div>
         }
       />
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {(['all', 'unread'] as const).map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            style={{
-              padding: '8px 18px', borderRadius: 'var(--border-radius-full)',
-              background: filter === f ? 'var(--color-emerald)' : 'var(--bg-card)',
-              color: filter === f ? '#fff' : 'var(--text-secondary)',
-              fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s',
-              border: filter === f ? 'none' : '1.5px solid var(--border-color)',
-            }}
-          >
-            {f === 'all' ? `All (${notifs.length})` : `Unread (${unreadCount})`}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 760 }}>
-        {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
-            <MdNotifications size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <p>No {filter === 'unread' ? 'unread ' : ''}notifications</p>
-          </div>
-        ) : (
-          filtered.map((n, i) => (
-            <motion.div
-              key={n.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ delay: i * 0.04 }}
+      {/* Filter Tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 22, overflowX: 'auto', paddingBottom: 6 }}>
+        {categories.map(c => {
+          const isActive = activeFilter === c.key;
+          return (
+            <button
+              key={c.key}
+              onClick={() => setActiveFilter(c.key)}
               style={{
-                background: n.read ? 'var(--bg-card)' : 'var(--bg-primary)',
-                borderLeft: `4px solid ${n.read ? 'var(--border-color)' : `var(--color-${n.type === 'error' ? 'error' : n.type === 'warning' ? 'warning' : n.type === 'success' ? 'success' : 'info'})`}`,
-                borderTop: '1px solid var(--border-color)',
-                borderRight: '1px solid var(--border-color)',
-                borderBottom: '1px solid var(--border-color)',
-                borderRadius: 'var(--border-radius-lg)',
-                padding: '16px 18px',
-                display: 'flex',
-                gap: 14,
-                alignItems: 'flex-start',
-                opacity: n.read ? 0.75 : 1,
+                padding: '8px 18px',
+                borderRadius: 'var(--border-radius-full)',
+                background: isActive ? 'var(--color-emerald)' : 'var(--bg-card)',
+                color: isActive ? '#fff' : 'var(--text-secondary)',
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                border: isActive ? '1.5px solid var(--color-emerald)' : '1.5px solid var(--border-color)',
+                whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
               }}
             >
-              <span style={{ fontSize: 22, color: `var(--color-${n.type})`, flexShrink: 0, marginTop: 2 }}>
-                {TYPE_ICON[n.type]}
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-                  <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15 }}>{n.title}</h4>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{timeAgo(n.createdAt)}</span>
-                </div>
-                <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{n.message}</p>
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                {!n.read && (
-                  <button
-                    onClick={() => markRead(n.id)}
-                    title="Mark as read"
-                    style={{ background: 'var(--bg-secondary)', border: 'none', borderRadius: 6, padding: '6px 8px', cursor: 'pointer', color: 'var(--color-emerald)', fontSize: 16, display: 'flex' }}
-                  >
-                    <MdDoneAll />
-                  </button>
-                )}
-                <button
-                  onClick={() => remove(n.id)}
-                  title="Dismiss"
-                  style={{ background: 'var(--bg-secondary)', border: 'none', borderRadius: 6, padding: '6px 8px', cursor: 'pointer', color: 'var(--color-error)', fontSize: 16, display: 'flex' }}
+              {c.key === 'unread' && unreadCount > 0 && (
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: isActive ? '#fff' : 'var(--color-error)' }} />
+              )}
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Notifications List */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 840 }}>
+        {loading && notifications.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
+            <MdNotifications size={44} style={{ opacity: 0.3, marginBottom: 12 }} />
+            <p>Loading notifications...</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: 60,
+            background: 'var(--bg-card)',
+            borderRadius: 'var(--border-radius-lg)',
+            border: '1px dashed var(--border-color)',
+            color: 'var(--text-muted)'
+          }}>
+            <MdNotifications size={48} style={{ opacity: 0.25, marginBottom: 12 }} />
+            <h4 style={{ color: 'var(--text-secondary)', marginBottom: 4 }}>No notifications found</h4>
+            <p style={{ fontSize: 14 }}>
+              {activeFilter === 'unread'
+                ? 'You are all caught up! No unread alerts.'
+                : `No notifications recorded for category "${activeFilter}".`}
+            </p>
+          </div>
+        ) : (
+          <AnimatePresence>
+            {filtered.map((n, i) => (
+              <motion.div
+                key={n.id}
+                layout
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2, delay: i * 0.03 }}
+                onClick={() => handleNotificationClick(n.id, n.link)}
+                style={{
+                  background: n.read ? 'var(--bg-card)' : 'var(--bg-secondary)',
+                  borderLeft: `4px solid ${
+                    n.type === 'error'
+                      ? 'var(--color-error)'
+                      : n.type === 'warning'
+                      ? 'var(--color-warning)'
+                      : n.type === 'success'
+                      ? 'var(--color-success)'
+                      : 'var(--color-info)'
+                  }`,
+                  borderTop: '1px solid var(--border-color)',
+                  borderRight: '1px solid var(--border-color)',
+                  borderBottom: '1px solid var(--border-color)',
+                  borderRadius: 'var(--border-radius-lg)',
+                  padding: '16px 20px',
+                  display: 'flex',
+                  gap: 16,
+                  alignItems: 'flex-start',
+                  cursor: n.link ? 'pointer' : 'default',
+                  opacity: n.read ? 0.75 : 1,
+                  boxShadow: n.read ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {/* Type Icon */}
+                <span
+                  style={{
+                    fontSize: 24,
+                    color: `var(--color-${n.type})`,
+                    flexShrink: 0,
+                    marginTop: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
                 >
-                  <MdDelete />
-                </button>
-              </div>
-            </motion.div>
-          ))
+                  {TYPE_ICON[n.type] || <MdInfo />}
+                </span>
+
+                {/* Content */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15, margin: 0 }}>
+                        {n.title}
+                      </h4>
+                      {n.category && (
+                        <Badge variant={n.type === 'error' ? 'error' : n.type === 'warning' ? 'warning' : 'neutral'}>
+                          {n.category}
+                        </Badge>
+                      )}
+                      {!n.read && (
+                        <span
+                          style={{
+                            width: 7,
+                            height: 7,
+                            borderRadius: '50%',
+                            background: 'var(--color-emerald)',
+                            display: 'inline-block'
+                          }}
+                        />
+                      )}
+                    </div>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
+                      {timeAgo(n.createdAt)}
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '4px 0 8px 0' }}>
+                    {n.message}
+                  </p>
+
+                  {n.link && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--color-emerald)', fontWeight: 600 }}>
+                      <span>View details</span>
+                      <MdOpenInNew size={14} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 8 }}>
+                  {!n.read && (
+                    <button
+                      onClick={(e) => handleMarkRead(e, n.id)}
+                      title="Mark as read"
+                      style={{
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 6,
+                        padding: '6px 8px',
+                        cursor: 'pointer',
+                        color: 'var(--color-emerald)',
+                        fontSize: 16,
+                        display: 'flex',
+                        alignItems: 'center',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <MdDoneAll />
+                    </button>
+                  )}
+                  <button
+                    onClick={(e) => handleRemove(e, n.id)}
+                    title="Dismiss"
+                    style={{
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 6,
+                      padding: '6px 8px',
+                      cursor: 'pointer',
+                      color: 'var(--color-error)',
+                      fontSize: 16,
+                      display: 'flex',
+                      alignItems: 'center',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <MdDelete />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         )}
       </div>
     </div>
   );
 }
+
