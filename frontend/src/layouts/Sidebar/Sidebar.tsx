@@ -5,7 +5,7 @@ import {
   MdDashboard, MdAgriculture, MdGrass, MdWaterDrop, MdCloud,
   MdBugReport, MdAutoAwesome, MdNotifications, MdAssessment,
   MdSettings, MdPerson, MdLogout, MdChevronLeft, MdChevronRight,
-  MdScience, MdSatelliteAlt,
+  MdScience, MdSatelliteAlt, MdStorefront,
 } from 'react-icons/md';
 import { GiWheat } from 'react-icons/gi';
 import styles from './Sidebar.module.css';
@@ -60,6 +60,7 @@ const NAV_CONFIG: NavSection[] = [
     items: [
       { to: '/weather', icon: <MdCloud />, label: 'Weather', roles: ALL_ROLES },
       { to: '/satellite', icon: <MdSatelliteAlt />, label: 'Satellite NDVI', roles: ALL_ROLES },
+      { to: '/mandi', icon: <MdStorefront />, label: 'e-NAM Prices', roles: ALL_ROLES },
       { to: '/disease', icon: <MdBugReport />, label: 'Disease Detection', roles: AGRI_ROLES },
       { to: '/ai-recommendations', icon: <MdAutoAwesome />, label: 'AI Advisory', roles: ALL_ROLES },
     ],

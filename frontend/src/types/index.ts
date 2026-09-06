@@ -373,3 +373,77 @@ export interface FilterState {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
+
+// ─── Module 13: e-NAM Mandi Prices & Price Arbitrage ─────────────────────────
+export interface MandiPrice {
+  id: number;
+  commodity: string;
+  variety: string;
+  category: string;
+  mandiName: string;
+  district: string;
+  state: string;
+  minPrice: number;
+  maxPrice: number;
+  modalPrice: number;
+  mspPrice: number | null;
+  mspSpread: number;
+  priceChangePercent: number;
+  trend: 'UP' | 'DOWN' | 'STABLE';
+  arrivalsTonnes: number;
+  distanceKm: number | null;
+  recordedDate: string;
+}
+
+export interface ArbitrageRequest {
+  farmId: number;
+  commodity: string;
+  quantityQuintals: number;
+}
+
+export interface ArbitrageOption {
+  mandiName: string;
+  district: string;
+  state: string;
+  distanceKm: number;
+  modalPrice: number;
+  transportCostPerQuintal: number;
+  grossRevenue: number;
+  totalTransportCost: number;
+  netProfit: number;
+  netPricePerQuintal: number;
+  isRecommended: boolean;
+  recommendationReason?: string;
+}
+
+export interface ArbitrageResponse {
+  farmName: string;
+  farmLocation: string;
+  commodity: string;
+  quantityQuintals: number;
+  localMandiName: string;
+  localNetProfit: number;
+  recommendedMandiName: string;
+  recommendedNetProfit: number;
+  additionalProfit: number;
+  percentageGain: number;
+  mandiOptions: ArbitrageOption[];
+}
+
+export interface CommodityPriceHistory {
+  date: string;
+  modalPrice: number;
+  mspPrice: number;
+  volumeTonnes: number;
+}
+
+export interface MarketSummaryStats {
+  totalMandisCovered: number;
+  totalCommoditiesTracked: number;
+  topGainers: MandiPrice[];
+  topLosers: MandiPrice[];
+  avgModalPrice: number;
+  marketSentiment: string;
+  lastSyncedAt: string;
+}
+

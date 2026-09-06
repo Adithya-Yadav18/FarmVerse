@@ -66,6 +66,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/weather/**").permitAll() // NEW: Make weather public
                 .requestMatchers("/api/irrigation/iot/**").permitAll() // Real Hardware Device Protocol & Ingestion
                 .requestMatchers("/api/satellite/public-badge/**").permitAll() // Public Verification Badge
+                .requestMatchers("/api/mandi/summary", "/api/mandi/prices").permitAll() // Public e-NAM Market Prices
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
             )
