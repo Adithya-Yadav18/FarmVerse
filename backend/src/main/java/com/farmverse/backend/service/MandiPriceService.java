@@ -1,14 +1,10 @@
 package com.farmverse.backend.service;
 
 import com.farmverse.backend.dto.MandiPriceDTO;
-import com.farmverse.backend.entity.Crop;
 import com.farmverse.backend.entity.Farm;
 import com.farmverse.backend.entity.MandiPriceEntity;
-import com.farmverse.backend.entity.User;
-import com.farmverse.backend.repository.CropRepository;
 import com.farmverse.backend.repository.FarmRepository;
 import com.farmverse.backend.repository.MandiPriceRepository;
-import com.farmverse.backend.repository.UserRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,8 +20,6 @@ public class MandiPriceService {
 
     private final MandiPriceRepository mandiRepository;
     private final FarmRepository farmRepository;
-    private final CropRepository cropRepository;
-    private final UserRepository userRepository;
 
     // Official Government of India Minimum Support Prices (MSP) in ₹/quintal
     private static final Map<String, Double> GOVT_MSP_RATES = new HashMap<>();
@@ -50,14 +44,10 @@ public class MandiPriceService {
 
     public MandiPriceService(
             MandiPriceRepository mandiRepository,
-            FarmRepository farmRepository,
-            CropRepository cropRepository,
-            UserRepository userRepository
+            FarmRepository farmRepository
     ) {
         this.mandiRepository = mandiRepository;
         this.farmRepository = farmRepository;
-        this.cropRepository = cropRepository;
-        this.userRepository = userRepository;
     }
 
     @PostConstruct
