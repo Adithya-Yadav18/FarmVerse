@@ -104,10 +104,15 @@ public class MandiPriceService {
      * Computes gross revenue, freight cost per quintal, and net payout across nearby mandis.
      */
     public MandiPriceDTO.ArbitrageResponse calculateArbitrage(MandiPriceDTO.ArbitrageRequest request) {
-        Farm farm = farmRepository.findById(request.getFarmId())
-                .orElseThrow(() -> new IllegalArgumentException("Farm not found with id: " + request.getFarmId()));
+        Farm farm = null;
+        if (request.getFarmId() != null) {
+            farm = farmRepository.findById(request.getFarmId()).orElse(null);
+        }
+        if (farm == null) {
+            farm = farmRepository.findAll().stream().findFirst().orElse(null);
+        }
 
-        String commodity = request.getCommodity();
+        String commodity = request.getCommodity() != null && !request.getCommodity().isBlank() ? request.getCommodity() : "Tomato";
         double quantity = request.getQuantityQuintals() != null && request.getQuantityQuintals() > 0
                 ? request.getQuantityQuintals()
                 : 25.0; // Default 25 quintals
@@ -121,8 +126,10 @@ public class MandiPriceService {
             mandis = mandiRepository.findAllByOrderByModalPriceDesc().stream().limit(6).collect(Collectors.toList());
         }
 
-        double farmLat = farm.getLatitude() != null ? farm.getLatitude() : 12.2958;
-        double farmLng = farm.getLongitude() != null ? farm.getLongitude() : 76.6394;
+        double farmLat = request.getOriginLat() != null ? request.getOriginLat() : (farm != null && farm.getLatitude() != null ? farm.getLatitude() : 12.2958);
+        double farmLng = request.getOriginLng() != null ? request.getOriginLng() : (farm != null && farm.getLongitude() != null ? farm.getLongitude() : 76.6394);
+        String farmName = farm != null ? farm.getFarmName() : (request.getOriginMandiName() != null ? request.getOriginMandiName() : "Regional Producer Hub");
+        String farmLoc = farm != null && farm.getLocation() != null ? farm.getLocation() : "Karnataka, India";
 
         List<MandiPriceDTO.ArbitrageOption> options = new ArrayList<>();
 
@@ -178,8 +185,8 @@ public class MandiPriceService {
         );
 
         return MandiPriceDTO.ArbitrageResponse.builder()
-                .farmName(farm.getFarmName())
-                .farmLocation(farm.getLocation() != null ? farm.getLocation() : "Farm Centroid")
+                .farmName(farmName)
+                .farmLocation(farmLoc)
                 .commodity(commodity)
                 .quantityQuintals(quantity)
                 .localMandiName(localMandi.getMandiName() + " (" + localMandi.getDistanceKm() + " km)")

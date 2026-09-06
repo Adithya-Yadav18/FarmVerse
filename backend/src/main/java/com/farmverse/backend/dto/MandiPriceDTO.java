@@ -42,6 +42,9 @@ public class MandiPriceDTO {
         private Long farmId;
         private String commodity;
         private Double quantityQuintals; // 1 quintal = 100 kg
+        private Double originLat;
+        private Double originLng;
+        private String originMandiName;
     }
 
     @Data
