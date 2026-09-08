@@ -6,7 +6,7 @@ import {
   MdBugReport, MdAutoAwesome, MdNotifications, MdAssessment,
   MdSettings, MdPerson, MdLogout, MdChevronLeft, MdChevronRight,
   MdScience, MdSatelliteAlt, MdStorefront, MdQrCodeScanner,
-  MdAccountBalance,
+  MdAccountBalance, MdEnergySavingsLeaf,
 } from 'react-icons/md';
 import { GiWheat } from 'react-icons/gi';
 import styles from './Sidebar.module.css';
@@ -65,6 +65,7 @@ const NAV_CONFIG: NavSection[] = [
       { to: '/traceability', icon: <MdQrCodeScanner />, label: 'QR Traceability', roles: ALL_ROLES },
       { to: '/credit-scoring', icon: <MdAccountBalance />, label: 'Credit Scoring', roles: ALL_ROLES },
       { to: '/simulator', icon: <GiWheat />, label: 'Crop Simulator', roles: ALL_ROLES },
+      { to: '/carbon', icon: <MdEnergySavingsLeaf />, label: 'Carbon Tracker', roles: ALL_ROLES },
       { to: '/disease', icon: <MdBugReport />, label: 'Disease Detection', roles: AGRI_ROLES },
       { to: '/ai-recommendations', icon: <MdAutoAwesome />, label: 'AI Advisory', roles: ALL_ROLES },
     ],

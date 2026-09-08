@@ -70,6 +70,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/trace/**").permitAll() // Public Farm-to-Fork QR Journey, Verification & Ledger
                 .requestMatchers("/api/credit/**").permitAll() // FarmVerse Alternative Agri-Credit Scoring & Micro-Loan API
                 .requestMatchers("/api/simulator/**").permitAll() // Generative Crop Simulator & Yield Engine
+                .requestMatchers("/api/carbon/**").permitAll() // Carbon Footprint Tracker & Green Credits API
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
             )

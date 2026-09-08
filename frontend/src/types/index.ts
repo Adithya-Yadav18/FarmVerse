@@ -765,3 +765,97 @@ export interface SimulationPreset {
   irrigationMethod: 'FLOOD' | 'DRIP' | 'SPRINKLER' | 'MULCH_DRIP';
 }
 
+// ─── Module 17: Carbon Footprint Tracker & Green Carbon Credits ─────────────
+export interface CarbonAuditRequest {
+  farmId: number;
+  dieselUsageLiters: number;
+  syntheticFertilizerKg: number;
+  electricityKwh: number;
+  tillageMethod: 'CONVENTIONAL' | 'REDUCED' | 'NO_TILL';
+  stubbleBurningAvoided: boolean;
+  solarPumpInstalled: boolean;
+  dripIrrigationActive: boolean;
+  biocharCompostTons: number;
+  agroforestryTreesCount: number;
+  coverCroppingAcres: number;
+}
+
+export interface EmissionItem {
+  sourceName: string;
+  amountKgCo2: number;
+  percentOfTotal: number;
+  icon: string;
+  mitigationTip: string;
+}
+
+export interface SequestrationItem {
+  practiceName: string;
+  amountKgCo2: number;
+  percentOfTotal: number;
+  icon: string;
+  permanenceYears: string;
+}
+
+export interface CarbonAuditResult {
+  id?: number;
+  farmId: number;
+  farmName: string;
+  farmLocation: string;
+  periodYear: number;
+  totalEmissionsKgCo2: number;
+  totalSequestrationKgCo2: number;
+  netCarbonKgCo2: number;
+  netCarbonTonnesCo2: number;
+  isNetNegative: boolean;
+  carbonCreditsMinted: number;
+  carbonRating: 'NET_NEGATIVE_A_PLUS' | 'LOW_CARBON_A' | 'BALANCED_B' | 'CARBON_INTENSIVE_C' | string;
+  estimatedMonetizationInr: number;
+  certificateSerial: string;
+  emissionsBreakdown: EmissionItem[];
+  sequestrationBreakdown: SequestrationItem[];
+  actionableRecommendations: string[];
+  createdAt: string;
+}
+
+export interface CarbonCreditListing {
+  id: number;
+  farmId: number;
+  farmName: string;
+  farmerName: string;
+  location: string;
+  creditsAvailable: number;
+  pricePerCreditInr: number;
+  totalPriceInr: number;
+  certificateSerial: string;
+  status: 'ACTIVE' | 'SOLD' | 'RETIRED';
+  carbonRating: string;
+  createdAt: string;
+}
+
+export interface ListCreditsPayload {
+  farmId: number;
+  creditsToList: number;
+  pricePerCreditInr: number;
+}
+
+export interface BuyCreditPayload {
+  creditsToBuy: number;
+  buyerName: string;
+  buyerEmail: string;
+  buyerOrganization: string;
+}
+
+export interface CertificateReceipt {
+  certificateSerial: string;
+  farmName: string;
+  farmerName: string;
+  location: string;
+  creditsRetired: number;
+  co2OffsetTonnes: number;
+  buyerName: string;
+  buyerOrganization: string;
+  issuedAt: string;
+  verificationHash: string;
+}
+
+
