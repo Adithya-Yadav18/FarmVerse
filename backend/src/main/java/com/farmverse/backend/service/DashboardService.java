@@ -11,7 +11,6 @@ import com.farmverse.backend.repository.CropRescueRepository;
 import com.farmverse.backend.repository.FarmRepository;
 import com.farmverse.backend.repository.IrrigationScheduleRepository;
 import com.farmverse.backend.repository.NotificationRepository;
-import com.farmverse.backend.repository.ProduceBatchRepository;
 import com.farmverse.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +33,6 @@ public class DashboardService {
     private final NotificationRepository notificationRepository;
     private final IrrigationScheduleRepository irrigationRepository;
     private final CropRescueRepository rescueRepository;
-    private final ProduceBatchRepository batchRepository;
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
