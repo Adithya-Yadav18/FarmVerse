@@ -71,6 +71,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/credit/**").permitAll() // FarmVerse Alternative Agri-Credit Scoring & Micro-Loan API
                 .requestMatchers("/api/simulator/**").permitAll() // Generative Crop Simulator & Yield Engine
                 .requestMatchers("/api/carbon/**").permitAll() // Carbon Footprint Tracker & Green Credits API
+                .requestMatchers("/api/equipment/**").permitAll() // P2P Farm Equipment Rental & Custom Hiring Marketplace
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
             )

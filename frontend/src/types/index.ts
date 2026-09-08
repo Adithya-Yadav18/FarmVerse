@@ -858,4 +858,113 @@ export interface CertificateReceipt {
   verificationHash: string;
 }
 
+// ==========================================
+// Module 18: Farm Equipment & CHC Marketplace Types
+// ==========================================
+
+export type EquipmentCategory =
+  | 'ALL'
+  | 'TRACTOR'
+  | 'COMBINE_HARVESTER'
+  | 'DRONE_SPRAYER'
+  | 'ROTAVATOR'
+  | 'LASER_LEVELER'
+  | 'WATER_PUMP'
+  | 'BALER'
+  | 'SEED_DRILL';
+
+export interface EquipmentItem {
+  id: number;
+  name: string;
+  category: EquipmentCategory | string;
+  brand: string;
+  horsepower: number;
+  fuelType: 'DIESEL' | 'ELECTRIC' | 'SOLAR' | 'PETROL' | string;
+  hourlyRate: number;
+  dailyRate: number;
+  securityDeposit: number;
+  operatorIncluded: boolean;
+  conditionStatus: 'EXCELLENT' | 'GOOD' | 'FAIR' | string;
+  status: 'AVAILABLE' | 'RENTED' | 'MAINTENANCE' | string;
+  locationName: string;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+  ownerName: string;
+  ownerPhone: string;
+  ownerId?: number;
+  imageUrl: string;
+  description: string;
+  specsJson?: string;
+  rating: number;
+  totalRentalsCount: number;
+  createdAt: string;
+}
+
+export interface EquipmentBooking {
+  id: number;
+  bookingReference: string;
+  equipmentId: number;
+  equipmentName: string;
+  equipmentCategory: string;
+  equipmentBrand: string;
+  equipmentImageUrl: string;
+  equipmentLocation: string;
+  renterId?: number;
+  renterName: string;
+  renterPhone: string;
+  deliveryAddress: string;
+  startDate: string;
+  endDate: string;
+  durationUnits: number;
+  rentalType: 'DAILY' | 'HOURLY';
+  totalRentalAmount: number;
+  securityDeposit: number;
+  status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  withOperator: boolean;
+  deliveryRequired: boolean;
+  specialInstructions?: string;
+  bookedAt: string;
+  reviewedAt?: string;
+  ownerNotes?: string;
+  ownerName: string;
+  ownerPhone: string;
+}
+
+export interface CreateBookingPayload {
+  equipmentId: number;
+  renterName: string;
+  renterPhone: string;
+  deliveryAddress: string;
+  startDate: string;
+  endDate: string;
+  durationUnits: number;
+  rentalType: 'DAILY' | 'HOURLY';
+  withOperator: boolean;
+  deliveryRequired: boolean;
+  specialInstructions?: string;
+}
+
+export interface CreateEquipmentPayload {
+  name: string;
+  category: string;
+  brand: string;
+  horsepower: number;
+  fuelType: string;
+  hourlyRate: number;
+  dailyRate: number;
+  securityDeposit: number;
+  operatorIncluded: boolean;
+  conditionStatus: string;
+  locationName: string;
+  latitude?: number;
+  longitude?: number;
+  ownerName: string;
+  ownerPhone: string;
+  imageUrl?: string;
+  description: string;
+  specsJson?: string;
+}
+
+
 
