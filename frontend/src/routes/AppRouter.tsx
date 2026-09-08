@@ -25,6 +25,7 @@ const CreditScorePage  = lazy(() => import('../pages/Credit/CreditScorePage'));
 const CropSimulatorPage = lazy(() => import('../pages/Simulator/CropSimulatorPage'));
 const CarbonPage        = lazy(() => import('../pages/Carbon/CarbonPage'));
 const EquipmentPage     = lazy(() => import('../pages/Equipment/EquipmentPage'));
+const VoiceAssistantPage = lazy(() => import('../pages/Voice/VoiceAssistantPage'));
 const NotificationsPage = lazy(() => import('../pages/Notifications/NotificationsPage'));
 const ReportsPage     = lazy(() => import('../pages/Reports/ReportsPage'));
 const ProfilePage     = lazy(() => import('../pages/Profile/ProfilePage'));
@@ -67,6 +68,7 @@ export function AppRouter() {
               <Route path="/simulator"          element={<CropSimulatorPage />} />
               <Route path="/carbon"             element={<CarbonPage />} />
               <Route path="/equipment"          element={<EquipmentPage />} />
+              <Route path="/voice-assistant"    element={<VoiceAssistantPage />} />
               <Route path="/ai-recommendations" element={<AIPage />} />
               <Route path="/notifications"      element={<NotificationsPage />} />
               <Route path="/profile"            element={<ProfilePage />} />

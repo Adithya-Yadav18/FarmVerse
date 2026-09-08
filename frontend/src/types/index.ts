@@ -966,5 +966,61 @@ export interface CreateEquipmentPayload {
   specsJson?: string;
 }
 
+// ==========================================
+// Module 19: Multi-lingual Voice Assistant Types
+// ==========================================
+
+export type SupportedLanguageCode = 'hi' | 'kn' | 'ta' | 'te' | 'mr' | 'en';
+
+export interface VoiceLanguage {
+  code: SupportedLanguageCode;
+  label: string;
+  nativeLabel: string;
+  speechLocale: string;
+  flag: string;
+}
+
+export interface VoiceQueryPayload {
+  queryText: string;
+  languageCode: SupportedLanguageCode | string;
+  farmId?: number;
+  cropContext?: string;
+  category?: string;
+}
+
+export interface VoiceAdvisoryResult {
+  consultationId: number;
+  transcribedQuery: string;
+  detectedLanguage: string;
+  languageCode: string;
+  spokenResponse: string;
+  writtenAdvisory: string;
+  actionItems: string[];
+  suggestedNextQuestions: string[];
+  category: string;
+  createdAt: string;
+}
+
+export interface VoicePreset {
+  id: string;
+  languageCode: string;
+  category: string;
+  promptText: string;
+  englishMeaning: string;
+  icon: string;
+}
+
+export interface VoiceConsultationHistoryItem {
+  id: number;
+  languageCode: string;
+  transcribedQuery: string;
+  spokenResponse: string;
+  writtenAdvisory: string;
+  category: string;
+  isBookmarked: boolean;
+  createdAt: string;
+}
+
+
 
 

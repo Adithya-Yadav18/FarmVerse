@@ -6,7 +6,7 @@ import {
   MdBugReport, MdAutoAwesome, MdNotifications, MdAssessment,
   MdSettings, MdPerson, MdLogout, MdChevronLeft, MdChevronRight,
   MdScience, MdSatelliteAlt, MdStorefront, MdQrCodeScanner,
-  MdAccountBalance, MdEnergySavingsLeaf,
+  MdAccountBalance, MdEnergySavingsLeaf, MdRecordVoiceOver,
 } from 'react-icons/md';
 import { GiWheat, GiFarmTractor } from 'react-icons/gi';
 import styles from './Sidebar.module.css';
@@ -67,6 +67,7 @@ const NAV_CONFIG: NavSection[] = [
       { to: '/simulator', icon: <GiWheat />, label: 'Crop Simulator', roles: ALL_ROLES },
       { to: '/carbon', icon: <MdEnergySavingsLeaf />, label: 'Carbon Tracker', roles: ALL_ROLES },
       { to: '/equipment', icon: <GiFarmTractor />, label: 'Equipment Rental', roles: ALL_ROLES },
+      { to: '/voice-assistant', icon: <MdRecordVoiceOver />, label: 'Kisan Voice Bot', roles: ALL_ROLES },
       { to: '/disease', icon: <MdBugReport />, label: 'Disease Detection', roles: AGRI_ROLES },
       { to: '/ai-recommendations', icon: <MdAutoAwesome />, label: 'AI Advisory', roles: ALL_ROLES },
     ],
