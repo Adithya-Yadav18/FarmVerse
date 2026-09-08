@@ -1,0 +1,364 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Presets Bar */
+.presetsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.presetsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.presetsTitle {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.presetsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.presetCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+}
+
+.presetCard:hover {
+  border-color: var(--color-emerald);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 120, 80, 0.12);
+}
+
+.presetCardActive {
+  border-color: var(--color-emerald) !important;
+  background: rgba(16, 120, 80, 0.08) !important;
+  box-shadow: 0 0 0 1px var(--color-emerald);
+}
+
+.presetIcon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.presetName {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.presetDesc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+/* Main Layout Grid */
+.simulatorGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 24px;
+}
+
+@media (max-width: 1024px) {
+  .simulatorGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Slider Controls Column */
+.slidersColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.controlGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.controlHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.controlLabel {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.controlValueBadge {
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.sliderInput {
+  width: 100%;
+  accent-color: var(--color-emerald);
+  cursor: pointer;
+  height: 6px;
+  border-radius: 3px;
+}
+
+.sliderLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Method Selector Grid */
+.methodGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.methodButton {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.methodButton:hover {
+  background: var(--bg-hover);
+  border-color: var(--color-emerald);
+}
+
+.methodButtonActive {
+  background: rgba(16, 120, 80, 0.12) !important;
+  border-color: var(--color-emerald) !important;
+  color: var(--color-emerald) !important;
+}
+
+.methodTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.methodPerk {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Pest Button Group */
+.pestGroup {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.pestButton {
+  padding: 7px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.pestButton:hover {
+  background: var(--bg-hover);
+}
+
+.pestButtonActive {
+  background: #107850 !important;
+  color: #ffffff !important;
+  border-color: #107850 !important;
+}
+
+/* Results Column */
+.resultsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.kpiCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kpiLabel {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.kpiValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.kpiValue {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.kpiDeltaGain {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #16a34a;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.kpiDeltaLoss {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #dc2626;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.kpiSubtext {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* Chart Container */
+.chartContainer {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 18px 20px;
+}
+
+.chartHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* Advice & Warnings */
+.adviceList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.adviceItem {
+  background: rgba(16, 120, 80, 0.08);
+  border-left: 3px solid #16a34a;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.warningItem {
+  background: rgba(239, 68, 68, 0.08);
+  border-left: 3px solid #ef4444;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* Saved Scenarios Comparison Drawer */
+.drawerOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+}
+
+.drawer {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 520px;
+  max-width: 90vw;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border-color);
+  padding: 24px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.35);
+}
+
+.scenarioList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.scenarioCard {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

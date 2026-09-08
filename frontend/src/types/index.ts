@@ -690,3 +690,78 @@ export interface KendraCenter {
   services: string;
 }
 
+// ─── Module 16: Generative Crop Simulator ──────────────────────────────────
+export interface CropSimulationRequest {
+  farmId: number;
+  cropId?: number;
+  cropName: string;
+  scenarioName: string;
+  waterAdjustmentPercent: number; // -50 to +50
+  fertilizerAdjustmentPercent: number; // 0 to 200
+  temperatureOffset: number; // -3.0 to +5.0
+  sowingShiftDays: number; // -15 to +30
+  pestPressure: 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH';
+  irrigationMethod: 'FLOOD' | 'DRIP' | 'SPRINKLER' | 'MULCH_DRIP';
+}
+
+export interface SimulationWeeklyPoint {
+  week: number;
+  stageName: string;
+  baselineBiomass: number;
+  simulatedBiomass: number;
+  simulatedNdvi: number;
+}
+
+export interface CropSimulationResult {
+  id?: number;
+  farmId: number;
+  farmName: string;
+  cropName: string;
+  scenarioName: string;
+  baselineYieldQuintals: number;
+  projectedYieldQuintals: number;
+  yieldChangePercent: number;
+  mandiPricePerQuintal: number;
+  inputCostPerAcre: number;
+  grossRevenuePerAcre: number;
+  netProfitPerAcre: number;
+  baselineNetProfitPerAcre: number;
+  profitChangePercent: number;
+  resilienceIndex: number;
+  riskLevel: 'LOW' | 'MODERATE' | 'SEVERE';
+  waterConsumptionLitersPerAcre: number;
+  waterEfficiencyLitersPerKg: number;
+  irrigationMethod: string;
+  weeklyGrowthCurve: SimulationWeeklyPoint[];
+  actionableAdvice: string[];
+  riskWarnings: string[];
+  createdAt: string;
+}
+
+export interface SavedScenarioSummary {
+  id: number;
+  farmId: number;
+  scenarioName: string;
+  cropName: string;
+  projectedYieldQuintals: number;
+  yieldChangePercent: number;
+  netProfitPerAcre: number;
+  resilienceIndex: number;
+  riskLevel: 'LOW' | 'MODERATE' | 'SEVERE';
+  irrigationMethod: string;
+  createdAt: string;
+}
+
+export interface SimulationPreset {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  waterAdjustmentPercent: number;
+  fertilizerAdjustmentPercent: number;
+  temperatureOffset: number;
+  sowingShiftDays: number;
+  pestPressure: 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH';
+  irrigationMethod: 'FLOOD' | 'DRIP' | 'SPRINKLER' | 'MULCH_DRIP';
+}
+

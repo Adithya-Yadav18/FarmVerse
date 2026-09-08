@@ -64,6 +64,7 @@ const NAV_CONFIG: NavSection[] = [
       { to: '/mandi', icon: <MdStorefront />, label: 'e-NAM Prices', roles: ALL_ROLES },
       { to: '/traceability', icon: <MdQrCodeScanner />, label: 'QR Traceability', roles: ALL_ROLES },
       { to: '/credit-scoring', icon: <MdAccountBalance />, label: 'Credit Scoring', roles: ALL_ROLES },
+      { to: '/simulator', icon: <GiWheat />, label: 'Crop Simulator', roles: ALL_ROLES },
       { to: '/disease', icon: <MdBugReport />, label: 'Disease Detection', roles: AGRI_ROLES },
       { to: '/ai-recommendations', icon: <MdAutoAwesome />, label: 'AI Advisory', roles: ALL_ROLES },
     ],
