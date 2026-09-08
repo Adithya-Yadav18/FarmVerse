@@ -73,6 +73,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/carbon/**").permitAll() // Carbon Footprint Tracker & Green Credits API
                 .requestMatchers("/api/equipment/**").permitAll() // P2P Farm Equipment Rental & Custom Hiring Marketplace
                 .requestMatchers("/api/voice/**").permitAll() // Multi-lingual Voice Assistant & Kisan Vani API
+                .requestMatchers("/api/rescue/**").permitAll() // SOS Crop Rescue & Emergency Agronomic Protocol API
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
             )

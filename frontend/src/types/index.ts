@@ -1021,6 +1021,100 @@ export interface VoiceConsultationHistoryItem {
   createdAt: string;
 }
 
+// ==========================================
+// Module 20: SOS Crop Rescue API Types
+// ==========================================
+
+export type EmergencyType =
+  | 'CHEMICAL_BURN_TOXICITY'
+  | 'FLOOD_WATERLOGGING'
+  | 'PEST_SWARM_ATTACK'
+  | 'HAILSTORM_PHYSICAL_DAMAGE'
+  | 'SEVERE_DROUGHT_WILT';
+
+export type EmergencySeverity = 'CRITICAL_IMMEDIATE' | 'HIGH_24H' | 'MODERATE';
+
+export type RescueStatus =
+  | 'SOS_TRIGGERED'
+  | 'ANTIDOTE_DEPLOYED'
+  | 'AGRONOMIST_DISPATCHED'
+  | 'STABILIZED'
+  | 'RESOLVED';
+
+export interface FirstAidStep {
+  stepNumber: number;
+  title: string;
+  actionInstruction: string;
+  timingUrgency: string;
+  caution: string;
+}
+
+export interface PmfbyClaimDossier {
+  claimReference: string;
+  farmerName: string;
+  farmLocation: string;
+  gpsLatitude: number;
+  gpsLongitude: number;
+  affectedCrop: string;
+  claimedAcreage: number;
+  disasterEvent: string;
+  incidentTimestamp: string;
+  estimatedLossPercent: number;
+  estimatedPayoutInr: number;
+  claimStatus: string;
+}
+
+export interface RescueTicket {
+  id: number;
+  ticketCode: string;
+  farmId?: number;
+  farmName: string;
+  farmerName: string;
+  farmerPhone: string;
+  latitude: number;
+  longitude: number;
+  emergencyType: EmergencyType | string;
+  severityLevel: EmergencySeverity | string;
+  affectedAcres: number;
+  cropName: string;
+  cropGrowthStage: string;
+  symptomsDescription?: string;
+  firstAidProtocol: FirstAidStep[];
+  assignedAgronomistName: string;
+  assignedAgronomistPhone: string;
+  status: RescueStatus | string;
+  estimatedDamagePercent: number;
+  estimatedSalvagePercent: number;
+  pmfbyDossier?: PmfbyClaimDossier;
+  resolutionNotes?: string;
+  triggeredAt: string;
+  resolvedAt?: string;
+}
+
+export interface TriggerSosPayload {
+  farmId?: number;
+  cropName: string;
+  emergencyType: EmergencyType | string;
+  severityLevel: EmergencySeverity | string;
+  affectedAcres: number;
+  cropGrowthStage?: string;
+  symptomsDescription?: string;
+  farmerName?: string;
+  farmerPhone?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface EmergencyCategoryPreset {
+  type: EmergencyType | string;
+  label: string;
+  icon: string;
+  defaultSeverity: string;
+  typicalSymptoms: string;
+  quickAntidoteSummary: string;
+}
+
+
 
 
 
