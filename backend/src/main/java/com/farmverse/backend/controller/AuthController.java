@@ -63,4 +63,15 @@ public class AuthController {
         AuthResponse.UserResponse userData = authService.updateProfile(userEmail, request);
         return ResponseEntity.ok(new ProfileResponse(userData));
     }
+
+    // PUT /api/auth/change-password
+    @PutMapping("/change-password")
+    public ResponseEntity<java.util.Map<String, Object>> changePassword(
+            @RequestBody java.util.Map<String, String> payload,
+            java.security.Principal principal) {
+        String email = principal != null ? principal.getName() : null;
+        String currentPassword = payload.get("currentPassword");
+        String newPassword = payload.get("newPassword");
+        return ResponseEntity.ok(authService.changePassword(email, currentPassword, newPassword));
+    }
 }

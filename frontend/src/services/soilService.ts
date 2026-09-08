@@ -1,21 +1,30 @@
 import api from './api';
-import type { SoilAnalysis, PaginatedResponse } from '../types';
+import type { SoilAnalysis } from '../types';
 
 export const soilService = {
-  getAll: async (filters: Record<string, unknown> = {}): Promise<PaginatedResponse<SoilAnalysis>> => {
-    const { data } = await api.get<PaginatedResponse<SoilAnalysis>>('/soil', { params: filters });
+  getAll: async (): Promise<SoilAnalysis[]> => {
+    const { data } = await api.get<SoilAnalysis[]>('/soil');
+    return Array.isArray(data) ? data : [];
+  },
+
+  getByFarm: async (farmId: string | number): Promise<SoilAnalysis[]> => {
+    const { data } = await api.get<SoilAnalysis[]>(`/soil/farm/${farmId}`);
+    return Array.isArray(data) ? data : [];
+  },
+
+  getById: async (id: string | number): Promise<SoilAnalysis> => {
+    const { data } = await api.get<SoilAnalysis>(`/soil/${id}`);
     return data;
   },
-  getByFarm: async (farmId: string): Promise<SoilAnalysis[]> => {
-    const { data } = await api.get<{ data: SoilAnalysis[] }>(`/soil/farm/${farmId}`);
-    return data.data;
+
+  create: async (payload: Partial<SoilAnalysis>): Promise<SoilAnalysis> => {
+    const { data } = await api.post<SoilAnalysis>('/soil', payload);
+    return data;
   },
-  getById: async (id: string): Promise<SoilAnalysis> => {
-    const { data } = await api.get<{ data: SoilAnalysis }>(`/soil/${id}`);
-    return data.data;
-  },
-  create: async (payload: Omit<SoilAnalysis, 'id'>): Promise<SoilAnalysis> => {
-    const { data } = await api.post<{ data: SoilAnalysis }>('/soil', payload);
-    return data.data;
+
+  delete: async (id: string | number): Promise<void> => {
+    await api.delete(`/soil/${id}`);
   },
 };
+
+export default soilService;

@@ -1,17 +1,50 @@
 import api from './api';
-import type { WeatherData, WeatherForecast } from '../types';
+
+export interface CitySuggestion {
+  name: string;
+  region: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface DailyForecast {
+  day: string;
+  high: number;
+  low: number;
+  description: string;
+  emoji: string;
+  rainProbability: number;
+}
+
+export interface CurrentWeather {
+  cityName: string;
+  temperature: number;
+  feelsLike: number;
+  humidity: number;
+  windSpeed: number;
+  windDirection: string;
+  pressure: number;
+  precipitation: number;
+  description: string;
+  emoji: string;
+}
+
+export interface WeatherResponse {
+  current: CurrentWeather;
+  daily: DailyForecast[];
+}
 
 export const weatherService = {
-  getCurrent: async (location: string): Promise<WeatherData> => {
-    const { data } = await api.get<{ data: WeatherData }>('/weather/current', { params: { location } });
-    return data.data;
+  getWeather: async (cityName: string): Promise<WeatherResponse> => {
+    const { data } = await api.get<WeatherResponse>('/weather', { params: { city: cityName } });
+    return data;
   },
-  getForecast: async (location: string, days = 7): Promise<WeatherForecast[]> => {
-    const { data } = await api.get<{ data: WeatherForecast[] }>('/weather/forecast', { params: { location, days } });
-    return data.data;
-  },
-  getForFarm: async (farmId: string): Promise<WeatherData> => {
-    const { data } = await api.get<{ data: WeatherData }>(`/weather/farm/${farmId}`);
-    return data.data;
+
+  searchCities: async (query: string): Promise<CitySuggestion[]> => {
+    const { data } = await api.get<CitySuggestion[]>('/weather/search', { params: { q: query } });
+    return Array.isArray(data) ? data : [];
   },
 };
+
+export default weatherService;

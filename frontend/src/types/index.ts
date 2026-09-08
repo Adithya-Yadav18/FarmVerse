@@ -1166,6 +1166,28 @@ export interface CreateUserByAdminPayload {
   status?: string;
 }
 
+// ==========================================
+// User Settings & Preferences Types
+// ==========================================
+
+export interface UserSettings {
+  id?: number;
+  userId?: number;
+  userEmail?: string;
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  smsNotifications: boolean;
+  alertNotifications: boolean;
+  reportNotifications: boolean;
+  weatherNotifications: boolean;
+  twoFactorAuth: boolean;
+  activityLog: boolean;
+  themePreference?: string;
+  languagePreference?: string;
+  updatedAt?: string;
+}
+
+
 
 
 

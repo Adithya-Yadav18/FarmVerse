@@ -75,6 +75,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/voice/**").permitAll() // Multi-lingual Voice Assistant & Kisan Vani API
                 .requestMatchers("/api/rescue/**").permitAll() // SOS Crop Rescue & Emergency Agronomic Protocol API
                 .requestMatchers("/api/admin/**").permitAll() // Admin User Management API & Global Governance
+                .requestMatchers("/api/settings/**").permitAll() // User Settings & Preferences API
+                .requestMatchers("/api/dashboard/**").permitAll() // Live Dashboard Telemetry API
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
             )

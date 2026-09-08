@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { MdDarkMode, MdLightMode, MdNotifications, MdSecurity, MdLanguage } from 'react-icons/md';
+import { MdDarkMode, MdLightMode, MdNotifications, MdSecurity } from 'react-icons/md';
 import { PageHeader } from '../../components/ui/PageHeader/PageHeader';
 import { Card } from '../../components/ui/Card/Card';
 import { Button } from '../../components/ui/Button/Button';
 import { useTheme } from '../../context/ThemeContext';
+import settingsService from '../../services/settingsService';
 
 interface ToggleProps { checked: boolean; onChange: (v: boolean) => void; }
 function Toggle({ checked, onChange }: ToggleProps) {
@@ -42,8 +43,59 @@ export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
   const [notifs, setNotifs] = useState({ email: true, push: true, sms: false, alerts: true, reports: false, weather: true });
   const [privacy, setPrivacy] = useState({ twoFactor: false, activityLog: true });
+  const [language, setLanguage] = useState('English (India)');
+  const [saving, setSaving] = useState(false);
 
-  const save = () => toast.success('Settings saved');
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const data = await settingsService.getSettings();
+      if (data) {
+        setNotifs({
+          email: data.emailNotifications,
+          push: data.pushNotifications,
+          sms: data.smsNotifications,
+          alerts: data.alertNotifications,
+          reports: data.reportNotifications,
+          weather: data.weatherNotifications,
+        });
+        setPrivacy({
+          twoFactor: data.twoFactorAuth,
+          activityLog: data.activityLog,
+        });
+        if (data.languagePreference) {
+          setLanguage(data.languagePreference);
+        }
+      }
+    } catch {
+      console.warn('Could not load settings from server, using local defaults');
+    }
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await settingsService.updateSettings({
+        emailNotifications: notifs.email,
+        pushNotifications: notifs.push,
+        smsNotifications: notifs.sms,
+        alertNotifications: notifs.alerts,
+        reportNotifications: notifs.reports,
+        weatherNotifications: notifs.weather,
+        twoFactorAuth: privacy.twoFactor,
+        activityLog: privacy.activityLog,
+        languagePreference: language,
+      });
+      toast.success('Settings saved to database!');
+    } catch {
+      toast.error('Failed to save settings.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div>
@@ -67,11 +119,17 @@ export default function SettingsPage() {
 
           <div style={{ padding: '14px 0' }}>
             <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Language</p>
-            <select style={{ padding: '9px 14px', border: '1.5px solid var(--border-color)', borderRadius: 'var(--border-radius)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}>
-              <option>English (India)</option>
-              <option>Hindi</option>
-              <option>Tamil</option>
-              <option>Telugu</option>
+            <select
+              value={language}
+              onChange={e => setLanguage(e.target.value)}
+              style={{ padding: '9px 14px', border: '1.5px solid var(--border-color)', borderRadius: 'var(--border-radius)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
+            >
+              <option value="English (India)">English (India)</option>
+              <option value="Hindi">Hindi (हिंदी)</option>
+              <option value="Tamil">Tamil (தமிழ்)</option>
+              <option value="Telugu">Telugu (తెలుగు)</option>
+              <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
+              <option value="Marathi">Marathi (मराठी)</option>
             </select>
           </div>
         </Card>
@@ -117,7 +175,9 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Button variant="primary" onClick={save}>Save All Settings</Button>
+        <Button variant="primary" onClick={save} disabled={saving}>
+          {saving ? 'Saving to Database...' : 'Save All Settings'}
+        </Button>
       </div>
     </div>
   );
