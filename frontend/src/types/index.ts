@@ -1114,6 +1114,59 @@ export interface EmergencyCategoryPreset {
   quickAntidoteSummary: string;
 }
 
+// ==========================================
+// Module 21: Admin User Management API Types
+// ==========================================
+
+export interface AdminUserSummary {
+  id: number;
+  fullName: string;
+  email: string;
+  role: string;
+  normalizedRole: UserRole | string;
+  phoneNumber: string;
+  location: string;
+  status: 'ACTIVE' | 'SUSPENDED';
+  totalFarmsCount: number;
+  totalCropsCount: number;
+  createdAt: string;
+}
+
+export interface PlatformStats {
+  totalUsers: number;
+  totalFarmers: number;
+  totalAgronomists: number;
+  totalAdmins: number;
+  totalNormalUsers: number;
+  totalFarms: number;
+  totalAcreage: number;
+  totalCropsPlanted: number;
+  totalEquipmentListings: number;
+  totalActiveRescues: number;
+  totalCarbonCreditsTraded: number;
+  roleDistribution: Record<string, number>;
+}
+
+export interface UpdateUserRolePayload {
+  role: string;
+}
+
+export interface UpdateUserStatusPayload {
+  status: 'ACTIVE' | 'SUSPENDED';
+  reason?: string;
+}
+
+export interface CreateUserByAdminPayload {
+  fullName: string;
+  email: string;
+  password?: string;
+  role: string;
+  phoneNumber?: string;
+  location?: string;
+  status?: string;
+}
+
+
 
 
 

@@ -7,7 +7,7 @@ import {
   MdSettings, MdPerson, MdLogout, MdChevronLeft, MdChevronRight,
   MdScience, MdSatelliteAlt, MdStorefront, MdQrCodeScanner,
   MdAccountBalance, MdEnergySavingsLeaf, MdRecordVoiceOver,
-  MdEmergency,
+  MdEmergency, MdManageAccounts,
 } from 'react-icons/md';
 import { GiWheat, GiFarmTractor } from 'react-icons/gi';
 import styles from './Sidebar.module.css';
@@ -77,6 +77,7 @@ const NAV_CONFIG: NavSection[] = [
   {
     section: 'Reports & Settings',
     items: [
+      { to: '/admin/users', icon: <MdManageAccounts />, label: 'User Governance', roles: ALL_ROLES },
       { to: '/notifications', icon: <MdNotifications />, label: 'Notifications', badge: true, roles: ALL_ROLES },
       { to: '/reports', icon: <MdAssessment />, label: 'Reports', roles: AGRI_ROLES },
       { to: '/profile', icon: <MdPerson />, label: 'Profile', roles: ALL_ROLES },

@@ -30,6 +30,7 @@ public class User {
     private String role; // e.g., "ROLE_FARMER", "ROLE_AGRONOMIST", "ROLE_ADMIN", "ROLE_USER"
     private String phoneNumber;
     private String location;
+    private String status = "ACTIVE"; // "ACTIVE", "SUSPENDED"
     
     private String resetToken;
     private LocalDateTime resetTokenExpiry;
