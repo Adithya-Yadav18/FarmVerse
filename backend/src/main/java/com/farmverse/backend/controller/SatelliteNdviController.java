@@ -34,6 +34,15 @@ public class SatelliteNdviController {
         return ResponseEntity.ok(satelliteService.triggerSatelliteRescan(farmId, auth.getName()));
     }
 
+    @PutMapping("/farms/{farmId}/coordinates")
+    public ResponseEntity<SatelliteNdviDTO.NdviRecordResponse> updateCoordinates(
+            @PathVariable Long farmId,
+            @RequestBody SatelliteNdviDTO.UpdateCoordinatesRequest req,
+            Authentication auth
+    ) {
+        return ResponseEntity.ok(satelliteService.updateFarmCoordinates(farmId, req.getLatitude(), req.getLongitude(), auth.getName()));
+    }
+
     @GetMapping("/farms/{farmId}/history")
     public ResponseEntity<List<SatelliteNdviDTO.NdviHistoricalPointDto>> getNdviHistory(
             @PathVariable Long farmId,

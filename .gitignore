@@ -20,3 +20,6 @@ backend/.settings/
 # OS specific
 .DS_Store
 Thumbs.db
+
+# Package archives
+*.zip

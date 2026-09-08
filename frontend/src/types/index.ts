@@ -447,3 +447,246 @@ export interface MarketSummaryStats {
   lastSyncedAt: string;
 }
 
+// ─── Farm-to-Fork QR Traceability (Module 14) ──────────────────────────────────
+export interface ProduceBatch {
+  id: number;
+  batchCode: string;
+  farmId: number;
+  farmName: string;
+  farmLocation: string;
+  latitude?: number;
+  longitude?: number;
+  farmerName: string;
+  commodity: string;
+  variety?: string;
+  quantityKg: number;
+  sowingDate?: string;
+  harvestDate: string;
+  packagingDate?: string;
+  expiryDate?: string;
+  farmingPractice: string;
+  soilType?: string;
+  waterSource?: string;
+  satelliteVigourRating?: string;
+  diseaseStatus?: string;
+  agronomistCertified: boolean;
+  agronomistName?: string;
+  agronomistNotes?: string;
+  certificationSeal?: string;
+  status: 'ACTIVE' | 'IN_TRANSIT' | 'DELIVERED' | 'RECALLED';
+  qrDataUrl: string;
+  cryptographicHash: string;
+  scanCount: number;
+  avgRating?: number;
+  totalReviews?: number;
+  createdAt: string;
+}
+
+export interface FarmOrigin {
+  farmId: number;
+  farmName: string;
+  location: string;
+  latitude: number;
+  longitude: number;
+  farmerName: string;
+  region: string;
+  farmingExperienceYears: number;
+  soilType: string;
+}
+
+export interface CultivationInfo {
+  sowingDate?: string;
+  harvestDate: string;
+  growthDurationDays: number;
+  waterSource: string;
+  farmingPractice: string;
+  weatherSummary: string;
+}
+
+export interface QualityAudit {
+  satelliteVigourRating: string;
+  meanNdvi: number;
+  diseaseStatus: string;
+  labVerificationStatus: string;
+}
+
+export interface AgronomistEndorsement {
+  certified: boolean;
+  agronomistName: string;
+  certificationSeal?: string;
+  notes?: string;
+  certifiedAtDate: string;
+}
+
+export interface ProduceReview {
+  id: number;
+  consumerName: string;
+  rating: number;
+  reviewText: string;
+  consumerLocation: string;
+  createdAtFormatted: string;
+}
+
+export interface PublicProduceJourney {
+  batchCode: string;
+  commodity: string;
+  variety?: string;
+  quantityKg: number;
+  status: string;
+  farmingPractice: string;
+  harvestDate: string;
+  packagingDate?: string;
+  expiryDate?: string;
+  qrDataUrl: string;
+  cryptographicHash: string;
+  scanCount: number;
+  origin: FarmOrigin;
+  cultivation: CultivationInfo;
+  qualityAudit: QualityAudit;
+  endorsement: AgronomistEndorsement;
+  avgRating: number;
+  totalReviews: number;
+  reviews: ProduceReview[];
+}
+
+export interface CreateBatchPayload {
+  farmId: number;
+  commodity: string;
+  variety?: string;
+  quantityKg: number;
+  sowingDate?: string;
+  harvestDate?: string;
+  packagingDate?: string;
+  expiryDate?: string;
+  farmingPractice?: string;
+  soilType?: string;
+  waterSource?: string;
+  certificationSeal?: string;
+}
+
+export interface CertifyBatchPayload {
+  agronomistName: string;
+  agronomistNotes: string;
+  certificationSeal: string;
+  approved: boolean;
+}
+
+export interface TraceabilitySummaryStats {
+  totalBatches: number;
+  totalScans: number;
+  certifiedOrganicPercent: number;
+  activeRecalls: number;
+  certifiedBatches: number;
+}
+
+// ─── Module 15: FarmVerse Credit Scoring & Micro-Loan Underwriting ─────────
+export interface CreditPillarDetail {
+  key: string;
+  name: string;
+  score: number;
+  weight: number;
+  grade: 'EXCELLENT' | 'GOOD' | 'AVERAGE' | 'POOR';
+  telemetryMetric: string;
+  impactNotes: string;
+}
+
+export interface CreditScoreResponse {
+  id: number;
+  farmerId: number;
+  farmerName: string;
+  farmId: number;
+  farmName: string;
+  farmLocation: string;
+  score: number; // 300 - 900
+  tier: 'PRIME_A' | 'SUPERIOR_B' | 'STANDARD_C' | 'HIGH_RISK_D';
+  tierLabel: string;
+  maxPreApprovedLimit: number;
+  kccEligible: boolean;
+  agronomistEndorsed: boolean;
+  agronomistName?: string;
+  agronomistNotes?: string;
+  soilHealthScore: number;
+  satelliteNdviScore: number;
+  harvestTraceabilityScore: number;
+  waterResilienceScore: number;
+  pillars: CreditPillarDetail[];
+  recommendations: string[];
+  calculatedAt: string;
+}
+
+export interface LoanOffer {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  maxAmount: number;
+  interestRateAnnual: number;
+  kccSubsidized: boolean;
+  tenureRange: string;
+  keyBenefits: string[];
+}
+
+export interface LoanApplication {
+  id: number;
+  applicationNumber: string;
+  farmerId: number;
+  farmerName: string;
+  farmId: number;
+  farmName: string;
+  farmLocation: string;
+  loanType: string;
+  amountRequested: number;
+  tenureMonths: number;
+  interestRate: number;
+  monthlyEmi: number;
+  purpose: string;
+  status: 'PENDING' | 'APPROVED' | 'DISBURSED' | 'REJECTED';
+  creditScoreAtApplication: number;
+  reviewedBy?: string;
+  underwritingNotes?: string;
+  appliedAt: string;
+  reviewedAt?: string;
+}
+
+export interface ApplyLoanPayload {
+  farmId: number;
+  loanType: string;
+  amountRequested: number;
+  tenureMonths: number;
+  purpose: string;
+}
+
+export interface ReviewLoanPayload {
+  status: 'APPROVED' | 'DISBURSED' | 'REJECTED';
+  underwritingNotes: string;
+}
+
+export interface SahayakRequestPayload {
+  farmerName: string;
+  phoneNumber: string;
+  village: string;
+  assistanceType: 'DOORSTEP_VISIT' | 'PHONE_CALLBACK';
+  preferredLanguage: string;
+  notes: string;
+}
+
+export interface SahayakResponse {
+  ticketNumber: string;
+  assignedOfficer: string;
+  officerPhone: string;
+  villageKendra: string;
+  status: string;
+  expectedVisitTime: string;
+  message: string;
+}
+
+export interface KendraCenter {
+  name: string;
+  type: string;
+  address: string;
+  contactPerson: string;
+  phone: string;
+  distanceKm: string;
+  services: string;
+}
+

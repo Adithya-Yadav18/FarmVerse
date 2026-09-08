@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import {
   MdSatelliteAlt, MdRefresh, MdLocationOn, MdLayers,
-  MdWarning, MdVerified, MdSend, MdInfo
+  MdWarning, MdVerified, MdSend, MdEditLocation, MdSave, MdClose
 } from 'react-icons/md';
 import { toast } from 'react-hot-toast';
 
@@ -23,7 +23,7 @@ import { satelliteService } from '../../services/satelliteService';
 import { useAuth } from '../../context/AuthContext';
 import type {
   Farm, SatelliteNdviRecord, NdviGridCell, NdviHistoricalPoint,
-  SatelliteOverviewStats, PublicCanopyBadge, UserRole
+  SatelliteOverviewStats, PublicCanopyBadge
 } from '../../types';
 import styles from './SatellitePage.module.css';
 
@@ -39,23 +39,9 @@ type MapLayerMode = 'optical' | 'ndvi' | 'ndwi' | 'grid';
 
 export default function SatellitePage() {
   const { user } = useAuth();
-  const rawRole = (user?.role || 'Farmer').replace('ROLE_', '').replace('_', ' ');
-  const userRole: UserRole =
-    rawRole.toLowerCase().includes('normal') || rawRole.toLowerCase() === 'user'
-      ? 'Normal User'
-      : rawRole.toLowerCase().includes('admin')
-      ? 'Admin'
-      : rawRole.toLowerCase().includes('agronomist')
-      ? 'Agronomist'
-      : 'Farmer';
-
-  // Active Role Perspective (Allows live role switching to test all 4 perspectives)
-  const [activePerspective, setActivePerspective] = useState<UserRole>(userRole);
-
-  const isFarmer = activePerspective === 'Farmer';
-  const isAgronomist = activePerspective === 'Agronomist';
-  const isAdmin = activePerspective === 'Admin';
-  const isNormalUser = activePerspective === 'Normal User';
+  const userRole = (user?.role || 'ROLE_FARMER').toUpperCase();
+  const isAgronomist = userRole.includes('AGRONOMIST');
+  const isAdmin = userRole.includes('ADMIN');
 
   // Farms state
   const [farms, setFarms] = useState<Farm[]>([]);
@@ -67,6 +53,11 @@ export default function SatellitePage() {
   const [overviewStats, setOverviewStats] = useState<SatelliteOverviewStats | null>(null);
   const [publicBadge, setPublicBadge] = useState<PublicCanopyBadge | null>(null);
   const [selectedCell, setSelectedCell] = useState<NdviGridCell | null>(null);
+
+  // Farm Pinning & Exact Area Selection State
+  const [isPinMode, setIsPinMode] = useState<boolean>(false);
+  const [pinnedCoords, setPinnedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isSavingCoords, setIsSavingCoords] = useState<boolean>(false);
 
   // Map Controls State
   const [layerMode, setLayerMode] = useState<MapLayerMode>('ndvi');
@@ -83,8 +74,11 @@ export default function SatellitePage() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const gridLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+  const isPinModeRef = useRef<boolean>(false);
+  isPinModeRef.current = isPinMode;
 
-  // 1. Fetch Farms List based on Role
+  // 1. Fetch Farms List
   const loadFarms = useCallback(async () => {
     try {
       const res = await api.get('/farms');
@@ -114,11 +108,13 @@ export default function SatellitePage() {
       ]);
 
       if (latestRes.status === 'fulfilled') {
-        setNdviData(latestRes.value);
-        if (latestRes.value.gridCells?.length > 0) {
-          // Default to stressed cell or center cell
-          const stressed = latestRes.value.gridCells.find(c => c.status === 'Stress' || c.status === 'Critical');
-          setSelectedCell(stressed || latestRes.value.gridCells[0]);
+        const data = latestRes.value;
+        setNdviData(data);
+        setPinnedCoords({ lat: data.centerLat, lng: data.centerLng });
+
+        if (data.gridCells?.length > 0) {
+          const stressed = data.gridCells.find(c => c.status === 'Stress' || c.status === 'Critical');
+          setSelectedCell(stressed || data.gridCells[0]);
         }
       }
       if (historyRes.status === 'fulfilled') {
@@ -146,6 +142,7 @@ export default function SatellitePage() {
   // Farm switch handler
   const handleFarmChange = (newFarmId: number) => {
     setSelectedFarmId(newFarmId);
+    setIsPinMode(false);
     loadSatelliteTelemetry(newFarmId);
   };
 
@@ -154,7 +151,7 @@ export default function SatellitePage() {
     if (!mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
-      const defaultCenter: L.LatLngExpression = [12.2958, 76.6394];
+      const defaultCenter: L.LatLngExpression = [12.4180, 76.6950];
       const map = L.map(mapContainerRef.current, {
         center: defaultCenter,
         zoom: 16,
@@ -171,39 +168,74 @@ export default function SatellitePage() {
       const layerGroup = L.layerGroup().addTo(map);
       gridLayerGroupRef.current = layerGroup;
       mapInstanceRef.current = map;
-    }
 
-    return () => {
-      // Keep map alive between state renders
-    };
+      // Map Click Handler for Precision Farm Pinning
+      map.on('click', (e: L.LeafletMouseEvent) => {
+        if (!isPinModeRef.current) return;
+        const newCoords = { lat: e.latlng.lat, lng: e.latlng.lng };
+        setPinnedCoords(newCoords);
+        toast('Farm pin moved to: ' + newCoords.lat.toFixed(5) + '°, ' + newCoords.lng.toFixed(5) + '°', {
+          icon: '📍',
+          duration: 2000
+        });
+      });
+    }
   }, []);
 
-  // 4. Update Map Center & Overlays when Telemetry or Layer Mode changes
+  // 4. Update Map Center & Overlays when Telemetry, Layer Mode, or Pinning changes
   useEffect(() => {
     const map = mapInstanceRef.current;
     const layerGroup = gridLayerGroupRef.current;
     if (!map || !layerGroup || !ndviData) return;
 
-    // Smoothly fly camera to the farm's exact coordinates
-    const center: L.LatLngExpression = [ndviData.centerLat, ndviData.centerLng];
-    map.flyTo(center, 16, { duration: 1.5 });
+    const currentLat = pinnedCoords ? pinnedCoords.lat : ndviData.centerLat;
+    const currentLng = pinnedCoords ? pinnedCoords.lng : ndviData.centerLng;
+    const center: L.LatLngExpression = [currentLat, currentLng];
+
+    // Smoothly fly camera if farm changed
+    if (!isPinMode) {
+      map.flyTo(center, 16, { duration: 1.2 });
+    }
 
     // Clear previous overlays
     layerGroup.clearLayers();
 
-    // Center Farm Marker Pin with Interactive Popup
-    const centerMarker = L.marker(center).addTo(layerGroup);
-    centerMarker.bindPopup(`
-      <div style="font-family: sans-serif; min-width: 170px; color: #0f172a; padding: 2px;">
-        <h4 style="margin: 0 0 4px 0; color: #107850; font-size: 14px;">🛰️ ${ndviData.farmName}</h4>
-        <p style="margin: 0 0 6px 0; font-size: 12px; color: #475569;">${ndviData.farmLocation || 'Field Centroid'}</p>
-        <div style="font-size: 12px; font-weight: 600;">Mean NDVI: <strong style="color: #16a34a;">${ndviData.meanNdvi}</strong> (${ndviData.canopyVigourRating})</div>
-        <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Coords: ${ndviData.centerLat.toFixed(4)}, ${ndviData.centerLng.toFixed(4)}</div>
-      </div>
-    `);
+    // Center Farm Marker Pin
+    const marker = L.marker(center, {
+      draggable: isPinMode,
+    }).addTo(layerGroup);
+    markerRef.current = marker;
+
+    if (isPinMode) {
+      marker.bindPopup(`
+        <div style="font-family: sans-serif; min-width: 180px; color: #0f172a; padding: 4px;">
+          <h4 style="margin: 0 0 4px 0; color: #107850; font-size: 14px;">📍 Adjusting Farm Location</h4>
+          <p style="margin: 0 0 6px 0; font-size: 12px; color: #475569;">Drag this pin or click on your field to position your exact farm boundaries.</p>
+          <div style="font-size: 11px; font-weight: 700; color: #16a34a;">Lat: ${currentLat.toFixed(5)}, Lng: ${currentLng.toFixed(5)}</div>
+        </div>
+      `).openPopup();
+
+      marker.on('dragend', () => {
+        const pos = marker.getLatLng();
+        setPinnedCoords({ lat: pos.lat, lng: pos.lng });
+      });
+    } else {
+      marker.bindPopup(`
+        <div style="font-family: sans-serif; min-width: 180px; color: #0f172a; padding: 4px;">
+          <h4 style="margin: 0 0 4px 0; color: #107850; font-size: 14px;">🛰️ ${ndviData.farmName}</h4>
+          <p style="margin: 0 0 6px 0; font-size: 12px; color: #475569;">${ndviData.farmLocation || 'Field Centroid'}</p>
+          <div style="font-size: 12px; font-weight: 600;">Mean NDVI: <strong style="color: #16a34a;">${ndviData.meanNdvi}</strong> (${ndviData.canopyVigourRating})</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px;">GPS: ${currentLat.toFixed(5)}°, ${currentLng.toFixed(5)}°</div>
+        </div>
+      `);
+    }
 
     // If Optical mode is selected, only show pure satellite imagery
     if (layerMode === 'optical') return;
+
+    // Shift 4x4 Grid Cells dynamically if pinned coordinates changed
+    const deltaLat = currentLat - ndviData.centerLat;
+    const deltaLng = currentLng - ndviData.centerLng;
 
     // Render 4x4 Grid Cells with False-Color Styling
     if (ndviData.gridCells && ndviData.gridCells.length > 0) {
@@ -218,7 +250,12 @@ export default function SatellitePage() {
           fillColor = 'transparent';
         }
 
-        const rect = L.rectangle(cell.bounds, {
+        const shiftedBounds: L.LatLngBoundsExpression = [
+          [cell.bounds[0][0] + deltaLat, cell.bounds[0][1] + deltaLng],
+          [cell.bounds[1][0] + deltaLat, cell.bounds[1][1] + deltaLng]
+        ];
+
+        const rect = L.rectangle(shiftedBounds, {
           color: layerMode === 'grid' ? '#38BDF8' : '#0F172A',
           weight: layerMode === 'grid' ? 1.5 : 0.8,
           fillColor: fillColor,
@@ -238,7 +275,32 @@ export default function SatellitePage() {
         rect.addTo(layerGroup);
       });
     }
-  }, [ndviData, layerMode, overlayOpacity]);
+  }, [ndviData, layerMode, overlayOpacity, isPinMode, pinnedCoords]);
+
+  // Handle Saving Updated Farm Coordinates
+  const handleSaveFarmLocation = async () => {
+    if (!selectedFarmId || !pinnedCoords) return;
+    setIsSavingCoords(true);
+    const toastId = toast.loading('Saving exact farm coordinates and recalibrating Sentinel-2 telemetry...');
+    try {
+      const updated = await satelliteService.updateCoordinates(selectedFarmId, pinnedCoords.lat, pinnedCoords.lng);
+      setNdviData(updated);
+      setPinnedCoords({ lat: updated.centerLat, lng: updated.centerLng });
+      setIsPinMode(false);
+      toast.success('Exact farm location saved! Multispectral satellite telemetry is now calibrated to your field.', { id: toastId });
+    } catch {
+      toast.error('Failed to save farm coordinates. Please check connection.', { id: toastId });
+    } finally {
+      setIsSavingCoords(false);
+    }
+  };
+
+  const handleCancelPinMode = () => {
+    if (ndviData) {
+      setPinnedCoords({ lat: ndviData.centerLat, lng: ndviData.centerLng });
+    }
+    setIsPinMode(false);
+  };
 
   // Handle Sentinel-2 Rescan Trigger
   const handleTriggerRescan = async () => {
@@ -248,8 +310,8 @@ export default function SatellitePage() {
     try {
       const updated = await satelliteService.triggerRescan(selectedFarmId);
       setNdviData(updated);
+      setPinnedCoords({ lat: updated.centerLat, lng: updated.centerLng });
       toast.success('Multispectral Sentinel pass compiled successfully!', { id: toastId });
-      loadSatelliteTelemetry(selectedFarmId);
     } catch {
       toast.error('Satellite pass simulation failed.', { id: toastId });
     } finally {
@@ -289,9 +351,9 @@ export default function SatellitePage() {
         subtitle="Sub-meter resolution satellite monitoring powered by Esri World Imagery & ESA Sentinel-2 multispectral reflectance analysis."
         breadcrumbs={[{ label: 'Satellite NDVI' }]}
         actions={
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Farm Selector */}
-            {farms.length > 0 && !isNormalUser && (
+            {farms.length > 0 && (
               <select
                 value={selectedFarmId || ''}
                 onChange={e => handleFarmChange(Number(e.target.value))}
@@ -304,15 +366,25 @@ export default function SatellitePage() {
                   fontSize: 13,
                   fontWeight: 600,
                   outline: 'none',
+                  cursor: 'pointer'
                 }}
               >
                 {farms.map(f => (
                   <option key={f.id} value={f.id}>
-                    {f.name} ({f.location || 'Active'})
+                    {f.name} ({f.location || 'Active Farmland'})
                   </option>
                 ))}
               </select>
             )}
+
+            {/* Select/Pin Exact Farm Location Button */}
+            <Button
+              variant={isPinMode ? 'primary' : 'outline'}
+              leftIcon={<MdEditLocation />}
+              onClick={() => setIsPinMode(!isPinMode)}
+            >
+              {isPinMode ? 'Pinning Field...' : 'Pin Exact Farm Plot'}
+            </Button>
 
             <Button
               variant="outline"
@@ -336,148 +408,42 @@ export default function SatellitePage() {
         }
       />
 
-      {/* Interactive 4-Role Perspective Selector Bar */}
-      <div className={styles.roleBar}>
-        <span className={styles.roleBarLabel}>Role Perspective:</span>
-        <button
-          type="button"
-          className={`${styles.roleTab} ${isFarmer ? styles.roleTabActive : ''}`}
-          onClick={() => setActivePerspective('Farmer')}
+      {/* Pin Exact Farm Area Floating Guidance Banner */}
+      {isPinMode && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={styles.pinBanner}
         >
-          🧑‍🌾 Farmer (My Farm Focus)
-        </button>
-        <button
-          type="button"
-          className={`${styles.roleTab} ${isAgronomist ? styles.roleTabActive : ''}`}
-          onClick={() => setActivePerspective('Agronomist')}
-        >
-          🔬 Agronomist (Regional Directives)
-        </button>
-        <button
-          type="button"
-          className={`${styles.roleTab} ${isAdmin ? styles.roleTabActive : ''}`}
-          onClick={() => setActivePerspective('Admin')}
-        >
-          🛡️ Admin (Constellation & Tile Cache)
-        </button>
-        <button
-          type="button"
-          className={`${styles.roleTab} ${isNormalUser ? styles.roleTabActive : ''}`}
-          onClick={() => setActivePerspective('Normal User')}
-        >
-          🏷️ Normal User (Canopy Certification Badge)
-        </button>
-      </div>
-
-      {/* Dynamic Role Capability Explainer Banner */}
-      <div className={styles.roleInfoBanner}>
-        {isFarmer && (
-          <div>
-            <strong>🧑‍🌾 Farmer Capability:</strong> View high-resolution multispectral scans of your owned farm, inspect 4x4 sub-plot telemetry for localized plant stress, and request on-demand Sentinel-2 pass rescans.
+          <div className={styles.pinBannerText}>
+            <strong>📍 Select & Pin Exact Farm Area:</strong> Click anywhere on the satellite image or drag the blue pin onto your exact agricultural cropland. The 4×4 multispectral grid will instantly align with your field boundaries so only your farm is monitored.
+            {pinnedCoords && (
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--color-emerald)', marginTop: 4, fontWeight: 700 }}>
+                Selected Plot: {pinnedCoords.lat.toFixed(5)}° N, {pinnedCoords.lng.toFixed(5)}° E
+              </span>
+            )}
           </div>
-        )}
-        {isAgronomist && (
-          <div>
-            <strong>🔬 Agronomist Capability:</strong> Multi-farm regional surveillance across districts, evaluate cross-farm vegetative stress, and issue coordinate-targeted field prescriptions directly to farm operators.
+          <div className={styles.pinBannerActions}>
+            <Button
+              size="sm"
+              variant="outline"
+              leftIcon={<MdClose />}
+              onClick={handleCancelPinMode}
+              disabled={isSavingCoords}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              leftIcon={<MdSave />}
+              onClick={handleSaveFarmLocation}
+              loading={isSavingCoords}
+            >
+              Save Farm Location
+            </Button>
           </div>
-        )}
-        {isAdmin && (
-          <div>
-            <strong>🛡️ Admin Capability:</strong> Platform-wide satellite telemetry, ESA Sentinel-2A / Sentinel-2B constellation health tracking, tile cache performance monitoring, and multi-district canopy distribution.
-          </div>
-        )}
-        {isNormalUser && (
-          <div>
-            <strong>🏷️ Normal User / Buyer Capability:</strong> Inspect public crop vigour ratings, verify eco-friendly farming practices, and authenticate cryptographic sustainability certificates before purchasing produce.
-          </div>
-        )}
-      </div>
-
-      {/* Admin Constellation & Tile Performance Metric Cards */}
-      {isAdmin && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-                🛰️
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
-                  Orbital Constellation
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
-                  ESA Sentinel-2A & 2B
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--color-success)', fontWeight: 600 }}>
-                  ● Active Telemetry (5-day cadence)
-                </div>
-              </div>
-            </div>
-          </Card>
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(16, 120, 80, 0.15)', color: 'var(--color-emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-                ⚡
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
-                  Esri Tile Cache
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
-                  98.4% Cache Hit Rate
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  Average Latency: 38ms
-                </div>
-              </div>
-            </div>
-          </Card>
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(234, 179, 8, 0.15)', color: '#EAB308', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-                🗺️
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
-                  Spatial Resolution
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
-                  Sub-meter Optical / 10m Multispectral
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  B4 (665nm) + B8 (842nm) NIR
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Normal User Sustainable Canopy Badge */}
-      {isNormalUser && publicBadge && (
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(16, 120, 80, 0.15)', color: 'var(--color-emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>
-                <MdVerified />
-              </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: 'var(--text-primary)' }}>
-                    {publicBadge.farmName} — Verified Sustainable Canopy
-                  </h3>
-                  <Badge variant="success" dot>Certified Green</Badge>
-                </div>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-                  Location: <strong>{publicBadge.location}</strong> • Crop: <strong>{publicBadge.primaryCrop}</strong> • Vigour: <strong>{publicBadge.canopyVigourRating}</strong> (Mean NDVI: <strong>{publicBadge.meanNdvi}</strong>) • Verified {publicBadge.verifiedDate}
-                </p>
-              </div>
-            </div>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace', background: 'var(--bg-secondary)', padding: '6px 12px', borderRadius: 6 }}>
-              {publicBadge.verificationHash}
-            </span>
-          </div>
-        </Card>
+        </motion.div>
       )}
 
       {/* 4 Live KPI Cards */}
@@ -572,7 +538,10 @@ export default function SatellitePage() {
         {/* Leaflet Satellite Map Card */}
         <div className={styles.mapCard}>
           <div className={styles.mapWrapper}>
-            <div ref={mapContainerRef} className={styles.mapElement} />
+            <div
+              ref={mapContainerRef}
+              className={`${styles.mapElement} ${isPinMode ? styles.crosshairCursor : ''}`}
+            />
 
             {/* Top-Right Multispectral Controls Overlay */}
             <div className={styles.mapControlsOverlay}>
@@ -675,9 +644,16 @@ export default function SatellitePage() {
 
           {/* Inspected Quadrant Detail Card */}
           <Card>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>
-              <MdLocationOn style={{ verticalAlign: 'middle', color: 'var(--color-emerald)' }} /> Inspected Sub-Plot Quadrant
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                <MdLocationOn style={{ verticalAlign: 'middle', color: 'var(--color-emerald)' }} /> Inspected Sub-Plot Quadrant
+              </h3>
+              {ndviData && (
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  GPS: {ndviData.centerLat.toFixed(4)}°, {ndviData.centerLng.toFixed(4)}°
+                </span>
+              )}
+            </div>
 
             {selectedCell ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

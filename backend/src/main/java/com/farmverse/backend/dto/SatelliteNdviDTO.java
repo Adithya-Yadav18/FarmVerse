@@ -93,4 +93,12 @@ public class SatelliteNdviDTO {
         private String verificationHash;
         private String verifiedDate;
     }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UpdateCoordinatesRequest {
+        private Double latitude;
+        private Double longitude;
+    }
 }

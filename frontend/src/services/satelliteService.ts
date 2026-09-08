@@ -17,6 +17,11 @@ export const satelliteService = {
     return data;
   },
 
+  updateCoordinates: async (farmId: number | string, latitude: number, longitude: number): Promise<SatelliteNdviRecord> => {
+    const { data } = await api.put<SatelliteNdviRecord>(`/satellite/farms/${farmId}/coordinates`, { latitude, longitude });
+    return data;
+  },
+
   getHistory: async (farmId: number | string): Promise<NdviHistoricalPoint[]> => {
     const { data } = await api.get<NdviHistoricalPoint[]>(`/satellite/farms/${farmId}/history`);
     return data;

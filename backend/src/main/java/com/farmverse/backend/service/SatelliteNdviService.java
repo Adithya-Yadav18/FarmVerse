@@ -38,52 +38,55 @@ public class SatelliteNdviService {
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
-    // Comprehensive Agronomic Coordinates Map for Major Agricultural Regions
+    // Comprehensive Agronomic Coordinates Map for Major Agricultural Cropland Belts
     private static final Map<String, double[]> LOCATION_COORDINATES = new LinkedHashMap<>();
     static {
-        // Specific Districts & Agronomic Belts
-        LOCATION_COORDINATES.put("mysore", new double[]{12.2958, 76.6394});
-        LOCATION_COORDINATES.put("mysuru", new double[]{12.2958, 76.6394});
-        LOCATION_COORDINATES.put("himachal", new double[]{31.1048, 77.1734});
-        LOCATION_COORDINATES.put("shimla", new double[]{31.1048, 77.1734});
-        LOCATION_COORDINATES.put("kerala", new double[]{10.0889, 77.0595});
+        // Specific Agricultural Cropland Belts (Points directly to lush green crop parcels, not city halls/houses)
+        LOCATION_COORDINATES.put("mysore", new double[]{12.4180, 76.6950}); // Srirangapatna-Mysore fertile sugarcane & paddy farming belt
+        LOCATION_COORDINATES.put("mysuru", new double[]{12.4180, 76.6950});
+        LOCATION_COORDINATES.put("blue valley", new double[]{12.4180, 76.6950});
+        LOCATION_COORDINATES.put("andhra pradesh", new double[]{16.5700, 81.3500}); // Krishna-Godavari Delta fertile agrarian crop fields
+        LOCATION_COORDINATES.put("andhra", new double[]{16.5700, 81.3500});
+        LOCATION_COORDINATES.put("delta", new double[]{16.5700, 81.3500});
+        LOCATION_COORDINATES.put("guntur", new double[]{16.2400, 80.5200}); // Guntur rural agrarian chilli & cotton fields
+        LOCATION_COORDINATES.put("punjab", new double[]{30.7500, 75.6500}); // Ludhiana rural green wheat-paddy agricultural plots
+        LOCATION_COORDINATES.put("ludhiana", new double[]{30.7500, 75.6500});
+        LOCATION_COORDINATES.put("amritsar", new double[]{31.5500, 74.9200}); // Majha agricultural plains
+        LOCATION_COORDINATES.put("haryana", new double[]{29.7200, 76.8500}); // Karnal agricultural basmati fields
+        LOCATION_COORDINATES.put("karnal", new double[]{29.7200, 76.8500});
+        LOCATION_COORDINATES.put("himachal", new double[]{31.1800, 77.4500}); // Kotgarh/Thanedar terraced apple orchard valley
+        LOCATION_COORDINATES.put("shimla", new double[]{31.1800, 77.4500});
+        LOCATION_COORDINATES.put("kerala", new double[]{11.6854, 76.1320}); // Wayanad lush spice & tea plantation fields
         LOCATION_COORDINATES.put("wayanad", new double[]{11.6854, 76.1320});
-        LOCATION_COORDINATES.put("kochi", new double[]{9.9312, 76.2673});
         LOCATION_COORDINATES.put("munnar", new double[]{10.0889, 77.0595});
-        LOCATION_COORDINATES.put("punjab", new double[]{30.9010, 75.8573});
-        LOCATION_COORDINATES.put("ludhiana", new double[]{30.9010, 75.8573});
-        LOCATION_COORDINATES.put("amritsar", new double[]{31.6340, 74.8723});
-        LOCATION_COORDINATES.put("haryana", new double[]{29.6857, 76.9905});
-        LOCATION_COORDINATES.put("karnal", new double[]{29.6857, 76.9905});
-        LOCATION_COORDINATES.put("tamil nadu", new double[]{11.0168, 76.9558});
-        LOCATION_COORDINATES.put("salem", new double[]{11.6643, 78.1460});
-        LOCATION_COORDINATES.put("coimbatore", new double[]{11.0168, 76.9558});
-        LOCATION_COORDINATES.put("chennai", new double[]{13.0827, 80.2707});
-        LOCATION_COORDINATES.put("karnataka", new double[]{15.3173, 75.7139});
-        LOCATION_COORDINATES.put("bengaluru", new double[]{12.9716, 77.5946});
-        LOCATION_COORDINATES.put("bangalore", new double[]{12.9716, 77.5946});
-        LOCATION_COORDINATES.put("maharashtra", new double[]{19.9975, 73.7898});
-        LOCATION_COORDINATES.put("nashik", new double[]{19.9975, 73.7898});
-        LOCATION_COORDINATES.put("pune", new double[]{18.5204, 73.8567});
-        LOCATION_COORDINATES.put("delhi", new double[]{28.6139, 77.2090});
-        LOCATION_COORDINATES.put("uttar pradesh", new double[]{26.8467, 80.9462});
-        LOCATION_COORDINATES.put("lucknow", new double[]{26.8467, 80.9462});
-        LOCATION_COORDINATES.put("gujarat", new double[]{22.5645, 72.9289});
-        LOCATION_COORDINATES.put("anand", new double[]{22.5645, 72.9289});
-        LOCATION_COORDINATES.put("ahmedabad", new double[]{23.0225, 72.5714});
-        LOCATION_COORDINATES.put("andhra pradesh", new double[]{16.3067, 80.4365});
-        LOCATION_COORDINATES.put("guntur", new double[]{16.3067, 80.4365});
-        LOCATION_COORDINATES.put("telangana", new double[]{17.3850, 78.4867});
-        LOCATION_COORDINATES.put("hyderabad", new double[]{17.3850, 78.4867});
-        LOCATION_COORDINATES.put("rajasthan", new double[]{26.9124, 75.7873});
-        LOCATION_COORDINATES.put("jaipur", new double[]{26.9124, 75.7873});
-        LOCATION_COORDINATES.put("madhya pradesh", new double[]{22.7196, 75.8577});
-        LOCATION_COORDINATES.put("indore", new double[]{22.7196, 75.8577});
-        LOCATION_COORDINATES.put("west bengal", new double[]{22.5726, 88.3639});
-        LOCATION_COORDINATES.put("kolkata", new double[]{22.5726, 88.3639});
-        LOCATION_COORDINATES.put("bihar", new double[]{25.5941, 85.1376});
-        LOCATION_COORDINATES.put("assam", new double[]{26.1445, 91.7362});
-        LOCATION_COORDINATES.put("birmingham", new double[]{52.4862, -1.8904});
+        LOCATION_COORDINATES.put("kochi", new double[]{9.9800, 76.3800});
+        LOCATION_COORDINATES.put("tamil nadu", new double[]{10.6600, 77.0100}); // Pollachi fertile agricultural coconut & crop belt
+        LOCATION_COORDINATES.put("coimbatore", new double[]{10.6600, 77.0100});
+        LOCATION_COORDINATES.put("salem", new double[]{11.6200, 78.2200});
+        LOCATION_COORDINATES.put("chennai", new double[]{12.8200, 80.0500}); // Chengalpattu agricultural green perimeter
+        LOCATION_COORDINATES.put("karnataka", new double[]{13.1500, 77.7200}); // Hoskote-Doddaballapura rural cropland
+        LOCATION_COORDINATES.put("bengaluru", new double[]{13.1500, 77.7200});
+        LOCATION_COORDINATES.put("bangalore", new double[]{13.1500, 77.7200});
+        LOCATION_COORDINATES.put("maharashtra", new double[]{20.1500, 73.8800}); // Dindori-Niphad agrarian vineyard & crop belt
+        LOCATION_COORDINATES.put("nashik", new double[]{20.1500, 73.8800});
+        LOCATION_COORDINATES.put("pune", new double[]{18.6800, 74.0200}); // Shirur agricultural sugarcane belt
+        LOCATION_COORDINATES.put("delhi", new double[]{28.8200, 77.0800}); // Narela agricultural green belt
+        LOCATION_COORDINATES.put("uttar pradesh", new double[]{26.9200, 81.0800}); // Barabanki agricultural green plains
+        LOCATION_COORDINATES.put("lucknow", new double[]{26.9200, 81.0800});
+        LOCATION_COORDINATES.put("gujarat", new double[]{22.4800, 72.9800}); // Anand fertile agrarian milk & crop belt
+        LOCATION_COORDINATES.put("anand", new double[]{22.4800, 72.9800});
+        LOCATION_COORDINATES.put("ahmedabad", new double[]{22.9200, 72.4200});
+        LOCATION_COORDINATES.put("telangana", new double[]{17.5200, 78.2500}); // Sangareddy rural farmland
+        LOCATION_COORDINATES.put("hyderabad", new double[]{17.5200, 78.2500});
+        LOCATION_COORDINATES.put("rajasthan", new double[]{26.8500, 75.6200}); // Bassi agricultural belt
+        LOCATION_COORDINATES.put("jaipur", new double[]{26.8500, 75.6200});
+        LOCATION_COORDINATES.put("madhya pradesh", new double[]{22.8200, 75.9200}); // Malwa soybean & wheat plateau farmlands
+        LOCATION_COORDINATES.put("indore", new double[]{22.8200, 75.9200});
+        LOCATION_COORDINATES.put("west bengal", new double[]{22.8800, 88.3800}); // Hooghly agricultural delta
+        LOCATION_COORDINATES.put("kolkata", new double[]{22.8800, 88.3800});
+        LOCATION_COORDINATES.put("bihar", new double[]{25.6800, 85.2800});
+        LOCATION_COORDINATES.put("assam", new double[]{26.2500, 91.8500});
+        LOCATION_COORDINATES.put("birmingham", new double[]{52.4100, -1.7800});
     }
 
     public SatelliteNdviService(
@@ -114,13 +117,17 @@ public class SatelliteNdviService {
         if (existingOpt.isPresent()) {
             SatelliteNdviEntity existing = existingOpt.get();
             // Automatically regenerate if record had legacy static values (0.71 NDVI / Delhi coordinates when farm is outside Delhi)
+            boolean isOldMysoreGrid = existing.getGridDataJson() != null
+                    && existing.getGridDataJson().contains("12.29");
+            boolean isOldAndhraGrid = existing.getGridDataJson() != null
+                    && existing.getGridDataJson().contains("16.30");
             boolean isStaleDelhiGrid = existing.getGridDataJson() != null
                     && existing.getGridDataJson().contains("28.61")
                     && (farm.getLocation() == null || !farm.getLocation().toLowerCase().contains("delhi"));
             boolean isLegacyStatic = Math.abs(existing.getMeanNdvi() - 0.71) < 0.001
                     && Math.abs(existing.getCloudCoveragePercent() - 1.4) < 0.001;
 
-            if (isStaleDelhiGrid || isLegacyStatic) {
+            if (isStaleDelhiGrid || isOldMysoreGrid || isOldAndhraGrid || isLegacyStatic) {
                 entity = generateFreshSatellitePass(farm);
             } else {
                 entity = existing;
@@ -136,6 +143,20 @@ public class SatelliteNdviService {
     public SatelliteNdviDTO.NdviRecordResponse triggerSatelliteRescan(Long farmId, String userEmail) {
         Farm farm = resolveFarmWithPermission(farmId, userEmail);
         ensureFarmCoordinates(farm);
+
+        SatelliteNdviEntity freshScan = generateFreshSatellitePass(farm);
+        return mapToRecordResponse(freshScan, farm);
+    }
+
+    @Transactional
+    public SatelliteNdviDTO.NdviRecordResponse updateFarmCoordinates(Long farmId, Double latitude, Double longitude, String userEmail) {
+        if (latitude == null || longitude == null) {
+            throw new IllegalArgumentException("Latitude and Longitude cannot be null");
+        }
+        Farm farm = resolveFarmWithPermission(farmId, userEmail);
+        farm.setLatitude(latitude);
+        farm.setLongitude(longitude);
+        farmRepository.save(farm);
 
         SatelliteNdviEntity freshScan = generateFreshSatellitePass(farm);
         return mapToRecordResponse(freshScan, farm);
@@ -241,11 +262,21 @@ public class SatelliteNdviService {
     private void ensureFarmCoordinates(Farm farm) {
         // Check if coordinates are null or stuck on previous default Delhi coordinates
         boolean isStuckDelhi = farm.getLatitude() != null && farm.getLongitude() != null
-                && Math.abs(farm.getLatitude() - 28.6139) < 0.001
-                && Math.abs(farm.getLongitude() - 77.2090) < 0.001
+                && Math.abs(farm.getLatitude() - 28.6139) < 0.01
+                && Math.abs(farm.getLongitude() - 77.2090) < 0.01
                 && (farm.getLocation() == null || !farm.getLocation().toLowerCase().contains("delhi"));
 
-        if (farm.getLatitude() == null || farm.getLongitude() == null || isStuckDelhi) {
+        // Check if stuck on old urban Mysore city center (12.2958, 76.6394)
+        boolean isOldUrbanMysore = farm.getLatitude() != null && farm.getLongitude() != null
+                && Math.abs(farm.getLatitude() - 12.2958) < 0.01
+                && Math.abs(farm.getLongitude() - 76.6394) < 0.01;
+
+        // Check if stuck on old urban Andhra/Guntur city center (16.3067, 80.4365)
+        boolean isOldUrbanAndhra = farm.getLatitude() != null && farm.getLongitude() != null
+                && Math.abs(farm.getLatitude() - 16.3067) < 0.01
+                && Math.abs(farm.getLongitude() - 80.4365) < 0.01;
+
+        if (farm.getLatitude() == null || farm.getLongitude() == null || isStuckDelhi || isOldUrbanMysore || isOldUrbanAndhra) {
             double[] coords = resolveCoordinates(farm.getLocation(), farm.getId());
             farm.setLatitude(coords[0]);
             farm.setLongitude(coords[1]);
@@ -308,8 +339,8 @@ public class SatelliteNdviService {
 
     private SatelliteNdviEntity generateFreshSatellitePass(Farm farm) {
         ensureFarmCoordinates(farm);
-        double centerLat = farm.getLatitude() != null ? farm.getLatitude() : 12.2958;
-        double centerLng = farm.getLongitude() != null ? farm.getLongitude() : 76.6394;
+        double centerLat = farm.getLatitude() != null ? farm.getLatitude() : 12.4180;
+        double centerLng = farm.getLongitude() != null ? farm.getLongitude() : 76.6950;
 
         long id = farm.getId() != null ? farm.getId() : 1L;
         String loc = farm.getLocation() != null ? farm.getLocation().toLowerCase() : "";
@@ -479,8 +510,8 @@ public class SatelliteNdviService {
     }
 
     private SatelliteNdviDTO.NdviRecordResponse mapToRecordResponse(SatelliteNdviEntity entity, Farm farm) {
-        double centerLat = farm.getLatitude() != null ? farm.getLatitude() : 12.2958;
-        double centerLng = farm.getLongitude() != null ? farm.getLongitude() : 76.6394;
+        double centerLat = farm.getLatitude() != null ? farm.getLatitude() : 12.4180;
+        double centerLng = farm.getLongitude() != null ? farm.getLongitude() : 76.6950;
 
         List<SatelliteNdviDTO.NdviGridCellDto> grid = new ArrayList<>();
         if (entity.getGridDataJson() != null && !entity.getGridDataJson().isBlank()) {
