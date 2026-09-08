@@ -1,16 +1,27 @@
 package com.farmverse.backend.service;
 
 import com.farmverse.backend.dto.DashboardDTO;
-import com.farmverse.backend.entity.*;
-import com.farmverse.backend.repository.*;
+import com.farmverse.backend.entity.Crop;
+import com.farmverse.backend.entity.CropRescueEntity;
+import com.farmverse.backend.entity.Farm;
+import com.farmverse.backend.entity.NotificationEntity;
+import com.farmverse.backend.entity.User;
+import com.farmverse.backend.repository.CropRepository;
+import com.farmverse.backend.repository.CropRescueRepository;
+import com.farmverse.backend.repository.FarmRepository;
+import com.farmverse.backend.repository.IrrigationScheduleRepository;
+import com.farmverse.backend.repository.NotificationRepository;
+import com.farmverse.backend.repository.ProduceBatchRepository;
+import com.farmverse.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service

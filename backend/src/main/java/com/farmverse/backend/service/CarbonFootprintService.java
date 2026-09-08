@@ -9,7 +9,6 @@ import com.farmverse.backend.repository.CarbonCreditListingRepository;
 import com.farmverse.backend.repository.CarbonFootprintRepository;
 import com.farmverse.backend.repository.FarmRepository;
 import com.farmverse.backend.repository.UserRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +24,6 @@ public class CarbonFootprintService {
     private final CarbonCreditListingRepository listingRepository;
     private final FarmRepository farmRepository;
     private final UserRepository userRepository;
-    private final ObjectMapper objectMapper;
 
     // Emission Factors (IPCC Tier-1 Agriculture)
     private static final double DIESEL_FACTOR_KG_PER_LITER = 2.68;
@@ -50,7 +48,6 @@ public class CarbonFootprintService {
         this.listingRepository = listingRepository;
         this.farmRepository = farmRepository;
         this.userRepository = userRepository;
-        this.objectMapper = new ObjectMapper();
     }
 
     @Transactional

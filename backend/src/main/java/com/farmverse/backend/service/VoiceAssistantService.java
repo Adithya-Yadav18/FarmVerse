@@ -3,7 +3,6 @@ package com.farmverse.backend.service;
 import com.farmverse.backend.dto.VoiceAssistantDTO;
 import com.farmverse.backend.entity.User;
 import com.farmverse.backend.entity.VoiceConsultationEntity;
-import com.farmverse.backend.repository.UserRepository;
 import com.farmverse.backend.repository.VoiceConsultationRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,7 +24,6 @@ import java.util.stream.Collectors;
 public class VoiceAssistantService {
 
     private final VoiceConsultationRepository voiceRepository;
-    private final UserRepository userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
 
