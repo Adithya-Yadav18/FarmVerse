@@ -1,7 +1,7 @@
 export const APP_NAME = 'FarmVerse';
 export const APP_TAGLINE = 'Smart Agriculture Management';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api';
 
 export const TOKEN_KEY = 'farmverse_access_token';
 export const REFRESH_TOKEN_KEY = 'farmverse_refresh_token';
