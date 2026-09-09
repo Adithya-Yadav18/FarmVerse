@@ -72,11 +72,15 @@ export function AppRouter() {
               <Route path="/equipment"          element={<EquipmentPage />} />
               <Route path="/voice-assistant"    element={<VoiceAssistantPage />} />
               <Route path="/crop-rescue"        element={<CropRescuePage />} />
-              <Route path="/admin/users"        element={<AdminUserManagementPage />} />
               <Route path="/ai-recommendations" element={<AIPage />} />
               <Route path="/notifications"      element={<NotificationsPage />} />
               <Route path="/profile"            element={<ProfilePage />} />
               <Route path="/settings"           element={<SettingsPage />} />
+
+              {/* System Administrator Governance (Admin Only) */}
+              <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
+                <Route path="/admin/users" element={<AdminUserManagementPage />} />
+              </Route>
 
               {/* Agriculture & Field Operations Access (Farmer, Agronomist, Admin) */}
               <Route element={<ProtectedRoute allowedRoles={['Farmer', 'Agronomist', 'Admin']} />}>

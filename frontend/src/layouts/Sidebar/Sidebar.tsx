@@ -40,6 +40,7 @@ interface NavSection {
 const ALL_ROLES: UserRole[] = ['Admin', 'Farmer', 'Agronomist', 'Normal User'];
 const AGRI_ROLES: UserRole[] = ['Admin', 'Farmer', 'Agronomist'];
 const FARM_OPERATORS: UserRole[] = ['Admin', 'Farmer'];
+const ADMIN_ROLES: UserRole[] = ['Admin'];
 
 const NAV_CONFIG: NavSection[] = [
   {
@@ -77,7 +78,7 @@ const NAV_CONFIG: NavSection[] = [
   {
     section: 'Reports & Settings',
     items: [
-      { to: '/admin/users', icon: <MdManageAccounts />, label: 'User Governance', roles: ALL_ROLES },
+      { to: '/admin/users', icon: <MdManageAccounts />, label: 'User Governance', roles: ADMIN_ROLES },
       { to: '/notifications', icon: <MdNotifications />, label: 'Notifications', badge: true, roles: ALL_ROLES },
       { to: '/reports', icon: <MdAssessment />, label: 'Reports', roles: AGRI_ROLES },
       { to: '/profile', icon: <MdPerson />, label: 'Profile', roles: ALL_ROLES },
