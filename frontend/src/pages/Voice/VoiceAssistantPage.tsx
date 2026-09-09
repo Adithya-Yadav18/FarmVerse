@@ -210,7 +210,7 @@ export default function VoiceAssistantPage() {
           <span>Multilingual Voice AI • 6 Regional Indian Languages</span>
         </div>
         <h1 className={styles.headerTitle}>
-          <MdAutoAwesome color="#2d6a4f" />
+          <MdAutoAwesome color="var(--color-emerald)" />
           Kisan Vani AI Krishi Mitra
         </h1>
         <p className={styles.headerSubtitle}>

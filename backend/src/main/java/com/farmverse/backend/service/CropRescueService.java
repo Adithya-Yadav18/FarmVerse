@@ -35,6 +35,30 @@ public class CropRescueService {
     public void init() {
         if (rescueRepository.count() == 0) {
             seedDemoRescueTickets();
+        } else {
+            updateLegacyDemoTickets();
+        }
+    }
+
+    @Transactional
+    public void updateLegacyDemoTickets() {
+        User defaultUser = userRepository.findAll().stream().findFirst().orElse(null);
+        if (defaultUser != null) {
+            List<CropRescueEntity> tickets = rescueRepository.findAll();
+            boolean updated = false;
+            for (CropRescueEntity t : tickets) {
+                if ("Adithya Yadav".equalsIgnoreCase(t.getFarmerName())) {
+                    t.setFarmerName(defaultUser.getFullName());
+                    if (defaultUser.getPhoneNumber() != null && !defaultUser.getPhoneNumber().isBlank()) {
+                        t.setFarmerPhone(defaultUser.getPhoneNumber());
+                    }
+                    updated = true;
+                }
+            }
+            if (updated) {
+                rescueRepository.saveAll(tickets);
+                log.info("Updated legacy rescue tickets with active user identity.");
+            }
         }
     }
 
@@ -42,6 +66,8 @@ public class CropRescueService {
     public void seedDemoRescueTickets() {
         log.info("Seeding initial SOS Crop Rescue incident records...");
         User defaultUser = userRepository.findAll().stream().findFirst().orElse(null);
+        String defaultFarmerName = defaultUser != null ? defaultUser.getFullName() : "Thomas Shelby";
+        String defaultFarmerPhone = defaultUser != null && defaultUser.getPhoneNumber() != null ? defaultUser.getPhoneNumber() : "+91 98450 12345";
 
         List<CropRescueDTO.FirstAidStepDto> waterlogSteps = List.of(
                 CropRescueDTO.FirstAidStepDto.builder()
@@ -97,8 +123,8 @@ public class CropRescueService {
                     .farmId(1L)
                     .farmName("Kaveri Green Acres Plot 4")
                     .farmer(defaultUser)
-                    .farmerName("Adithya Yadav")
-                    .farmerPhone("+91 98450 11223")
+                    .farmerName(defaultFarmerName)
+                    .farmerPhone(defaultFarmerPhone)
                     .latitude(12.5240)
                     .longitude(76.8980)
                     .emergencyType("FLOOD_WATERLOGGING")
@@ -115,7 +141,7 @@ public class CropRescueService {
                     .estimatedSalvagePercent(75.0)
                     .claimDossierJson(objectMapper.writeValueAsString(CropRescueDTO.PmfbyClaimDossierDto.builder()
                             .claimReference("PMFBY-INU-2026-9812")
-                            .farmerName("Adithya Yadav")
+                            .farmerName(defaultFarmerName)
                             .farmLocation("Mandya Rural, Karnataka")
                             .gpsLatitude(12.5240)
                             .gpsLongitude(76.8980)
@@ -135,8 +161,8 @@ public class CropRescueService {
                     .farmId(2L)
                     .farmName("Mysore Organic Valley")
                     .farmer(defaultUser)
-                    .farmerName("Adithya Yadav")
-                    .farmerPhone("+91 98450 11223")
+                    .farmerName(defaultFarmerName)
+                    .farmerPhone(defaultFarmerPhone)
                     .latitude(12.3150)
                     .longitude(76.6620)
                     .emergencyType("CHEMICAL_BURN_TOXICITY")
@@ -153,7 +179,7 @@ public class CropRescueService {
                     .estimatedSalvagePercent(88.0)
                     .claimDossierJson(objectMapper.writeValueAsString(CropRescueDTO.PmfbyClaimDossierDto.builder()
                             .claimReference("PMFBY-TOX-2026-1104")
-                            .farmerName("Adithya Yadav")
+                            .farmerName(defaultFarmerName)
                             .farmLocation("Mysore Rural, Karnataka")
                             .gpsLatitude(12.3150)
                             .gpsLongitude(76.6620)

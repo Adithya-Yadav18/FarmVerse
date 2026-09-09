@@ -3,7 +3,7 @@
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
-  color: #1a2e26;
+  color: var(--text-primary);
   animation: fadeIn 0.3s ease-out;
 }
 
@@ -25,7 +25,7 @@
 .headerTitle {
   font-size: 26px;
   font-weight: 700;
-  color: #1b4332;
+  color: var(--text-primary);
   margin: 0 0 6px 0;
   display: flex;
   align-items: center;
@@ -34,7 +34,7 @@
 
 .headerSubtitle {
   font-size: 14px;
-  color: #4b6354;
+  color: var(--text-secondary);
   margin: 0;
   max-width: 760px;
   line-height: 1.5;
@@ -68,9 +68,9 @@
 }
 
 .secondaryBtn {
-  background: #ffffff;
-  color: #2d6a4f;
-  border: 1px solid #d8f3dc;
+  background: var(--bg-card);
+  color: var(--color-emerald);
+  border: 1px solid var(--border-color);
   padding: 10px 18px;
   border-radius: 10px;
   font-size: 14px;
@@ -83,8 +83,8 @@
 }
 
 .secondaryBtn:hover {
-  background: #f2fbf5;
-  border-color: #95d5b2;
+  background: var(--bg-secondary);
+  border-color: var(--color-light-green);
 }
 
 /* Stats Ribbon */
@@ -96,11 +96,11 @@
 }
 
 .statCard {
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 14px;
   padding: 18px;
-  border: 1px solid #e9f5ed;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
   gap: 16px;
@@ -115,8 +115,8 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-emerald);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -128,20 +128,20 @@
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  color: #1b4332;
+  color: var(--text-primary);
 }
 
 .statInfo p {
   margin: 2px 0 0 0;
   font-size: 13px;
-  color: #607d6d;
+  color: var(--text-secondary);
 }
 
 /* Navigation Tabs */
 .tabNav {
   display: flex;
   gap: 8px;
-  border-bottom: 2px solid #e8f5e9;
+  border-bottom: 2px solid var(--border-color);
   margin-bottom: 24px;
 }
 
@@ -151,7 +151,7 @@
   background: none;
   font-size: 14px;
   font-weight: 600;
-  color: #52796f;
+  color: var(--text-secondary);
   cursor: pointer;
   position: relative;
   transition: all 0.2s;
@@ -161,11 +161,11 @@
 }
 
 .tabBtn:hover {
-  color: #1b4332;
+  color: var(--text-primary);
 }
 
 .tabBtnActive {
-  color: #1b4332;
+  color: var(--color-emerald);
   font-weight: 700;
 }
 
@@ -176,13 +176,13 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: #2d6a4f;
+  background: var(--color-emerald);
   border-radius: 3px 3px 0 0;
 }
 
 .badgePill {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-emerald);
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 12px;
@@ -191,10 +191,10 @@
 
 /* Controls Bar */
 .controlsBar {
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 14px;
   padding: 18px;
-  border: 1px solid #e8f5e9;
+  border: 1px solid var(--border-color);
   margin-bottom: 24px;
   display: flex;
   flex-direction: column;
@@ -213,8 +213,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #f8faf9;
-  border: 1px solid #dbe7df;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   padding: 8px 14px;
   flex: 1;
@@ -227,27 +227,27 @@
   width: 100%;
   font-size: 14px;
   outline: none;
-  color: #1a2e26;
+  color: var(--text-primary);
 }
 
 .radiusFilter {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #f4fbf6;
+  background: var(--bg-secondary);
   padding: 8px 16px;
   border-radius: 10px;
-  border: 1px solid #d8f3dc;
+  border: 1px solid var(--border-color);
 }
 
 .radiusFilter label {
   font-size: 13px;
   font-weight: 600;
-  color: #2d6a4f;
+  color: var(--text-secondary);
 }
 
 .radiusSlider {
-  accent-color: #2d6a4f;
+  accent-color: var(--color-emerald);
   cursor: pointer;
 }
 
@@ -263,9 +263,9 @@
   border-radius: 20px;
   font-size: 13px;
   font-weight: 600;
-  border: 1px solid #d8f3dc;
-  background: #ffffff;
-  color: #406352;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s ease;
@@ -275,14 +275,15 @@
 }
 
 .chip:hover {
-  background: #f0fbf4;
-  border-color: #74c69d;
+  background: var(--bg-card);
+  border-color: var(--color-light-green);
+  color: var(--text-primary);
 }
 
 .chipActive {
-  background: #2d6a4f;
+  background: var(--color-emerald);
   color: #ffffff;
-  border-color: #2d6a4f;
+  border-color: var(--color-emerald);
 }
 
 /* Equipment Grid */
@@ -293,11 +294,11 @@
 }
 
 .card {
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 16px;
   overflow: hidden;
-  border: 1px solid #e8f5e9;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   transition: all 0.25s ease;
@@ -305,7 +306,8 @@
 
 .card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-light-green);
 }
 
 .cardImageWrap {
@@ -313,7 +315,7 @@
   height: 190px;
   width: 100%;
   overflow: hidden;
-  background: #e9ecef;
+  background: var(--bg-tertiary);
 }
 
 .cardImage {
@@ -331,21 +333,21 @@
   position: absolute;
   top: 12px;
   left: 12px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(15, 23, 42, 0.82);
+  color: #f8fafc;
   backdrop-filter: blur(4px);
   padding: 4px 10px;
   border-radius: 8px;
   font-size: 11px;
   font-weight: 700;
-  color: #1b4332;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .distanceBadge {
   position: absolute;
   bottom: 12px;
   right: 12px;
-  background: rgba(27, 67, 50, 0.88);
+  background: rgba(15, 94, 58, 0.88);
   color: #ffffff;
   padding: 4px 10px;
   border-radius: 8px;
@@ -367,7 +369,7 @@
 .cardCategory {
   font-size: 12px;
   font-weight: 700;
-  color: #40916c;
+  color: var(--color-light-green);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
@@ -376,14 +378,14 @@
 .cardTitle {
   font-size: 18px;
   font-weight: 700;
-  color: #1b4332;
+  color: var(--text-primary);
   margin: 0 0 8px 0;
   line-height: 1.3;
 }
 
 .cardLocation {
   font-size: 13px;
-  color: #667d71;
+  color: var(--text-muted);
   margin-bottom: 14px;
   display: flex;
   align-items: center;
@@ -398,8 +400,9 @@
 }
 
 .specPill {
-  background: #f3f7f5;
-  color: #2b4c3e;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
   padding: 4px 9px;
   border-radius: 6px;
   font-size: 12px;
@@ -408,7 +411,7 @@
 
 .cardDescription {
   font-size: 13px;
-  color: #556b60;
+  color: var(--text-secondary);
   line-height: 1.45;
   margin-bottom: 18px;
   flex: 1;
@@ -423,7 +426,7 @@
   justify-content: space-between;
   align-items: flex-end;
   padding-top: 14px;
-  border-top: 1px solid #f0f6f2;
+  border-top: 1px solid var(--border-color);
   margin-bottom: 16px;
 }
 
@@ -434,20 +437,20 @@
 
 .rateLabel {
   font-size: 11px;
-  color: #7b9487;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .rateAmount {
   font-size: 20px;
   font-weight: 800;
-  color: #1b4332;
+  color: var(--text-primary);
 }
 
 .rateAmount span {
   font-size: 12px;
   font-weight: 500;
-  color: #6b8477;
+  color: var(--text-muted);
 }
 
 .bookBtn {
@@ -480,15 +483,15 @@
 }
 
 .bookingCard {
-  background: #ffffff;
-  border: 1px solid #e8f5e9;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--shadow-sm);
   flex-wrap: wrap;
 }
 
@@ -503,18 +506,19 @@
   height: 80px;
   border-radius: 12px;
   object-fit: cover;
+  background: var(--bg-tertiary);
 }
 
 .bookingTitle {
   font-size: 17px;
   font-weight: 700;
-  color: #1b4332;
+  color: var(--text-primary);
   margin: 0 0 4px 0;
 }
 
 .bookingMeta {
   font-size: 13px;
-  color: #5c7467;
+  color: var(--text-secondary);
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
@@ -529,28 +533,28 @@
 }
 
 .statusPENDING_APPROVAL {
-  background: #fff8e1;
-  color: #f57f17;
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
 }
 
 .statusAPPROVED {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
 }
 
 .statusACTIVE {
-  background: #e3f2fd;
-  color: #1565c0;
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
 }
 
 .statusCOMPLETED {
-  background: #f1f8e9;
-  color: #33691e;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
 }
 
 .statusREJECTED {
-  background: #ffebee;
-  color: #c62828;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
 }
 
 .bookingActions {
@@ -568,24 +572,34 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.approveBtn:hover {
+  background: #1b5e20;
 }
 
 .rejectBtn {
-  background: #ffffff;
-  color: #c62828;
-  border: 1px solid #ffcdd2;
+  background: var(--bg-card);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rejectBtn:hover {
+  background: rgba(239, 68, 68, 0.1);
 }
 
 /* Modals */
 .modalBackdrop {
   position: fixed;
   inset: 0;
-  background: rgba(10, 25, 18, 0.6);
+  background: rgba(10, 25, 18, 0.7);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -595,16 +609,18 @@
 }
 
 .modalContent {
-  background: #ffffff;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 20px;
   width: 100%;
   max-width: 620px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-xl);
   padding: 28px;
   position: relative;
   animation: popIn 0.25s ease-out;
+  color: var(--text-primary);
 }
 
 @keyframes popIn {
@@ -617,14 +633,14 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  border-bottom: 1px solid #eef5f1;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 14px;
 }
 
 .modalTitle {
   font-size: 20px;
   font-weight: 700;
-  color: #1b4332;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -632,8 +648,13 @@
   background: none;
   border: none;
   font-size: 24px;
-  color: #8fa599;
+  color: var(--text-muted);
   cursor: pointer;
+  transition: color 0.2s;
+}
+
+.closeBtn:hover {
+  color: var(--text-primary);
 }
 
 .formGroup {
@@ -644,7 +665,7 @@
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #2d6a4f;
+  color: var(--text-secondary);
   margin-bottom: 6px;
 }
 
@@ -653,19 +674,21 @@
 .formTextarea {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid #d4e3db;
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   font-size: 14px;
-  color: #1a2e26;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
   outline: none;
   box-sizing: border-box;
+  transition: border-color 0.2s;
 }
 
 .formInput:focus,
 .formSelect:focus,
 .formTextarea:focus {
-  border-color: #2d6a4f;
-  box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.12);
+  border-color: var(--color-emerald);
+  box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.2);
 }
 
 .formRow {
@@ -675,8 +698,8 @@
 }
 
 .costBreakdown {
-  background: #f4faf6;
-  border: 1px solid #d8f3dc;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 16px;
   margin: 20px 0;
@@ -686,7 +709,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  color: #4b6658;
+  color: var(--text-secondary);
   margin-bottom: 6px;
 }
 
@@ -695,35 +718,35 @@
   justify-content: space-between;
   font-size: 16px;
   font-weight: 700;
-  color: #1b4332;
+  color: var(--text-primary);
   padding-top: 10px;
-  border-top: 1px dashed #b7e4c7;
+  border-top: 1px dashed var(--border-color);
   margin-top: 8px;
 }
 
 .emptyState {
   text-align: center;
   padding: 60px 20px;
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 16px;
-  border: 1px dashed #cde5d7;
+  border: 1px dashed var(--border-color);
 }
 
 .emptyIcon {
   font-size: 48px;
-  color: #95d5b2;
+  color: var(--color-light-green);
   margin-bottom: 12px;
 }
 
 .emptyTitle {
   font-size: 18px;
   font-weight: 700;
-  color: #1b4332;
+  color: var(--text-primary);
   margin: 0 0 6px 0;
 }
 
 .emptyText {
   font-size: 14px;
-  color: #638072;
+  color: var(--text-secondary);
   margin: 0;
 }

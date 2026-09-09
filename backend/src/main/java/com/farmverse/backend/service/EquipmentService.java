@@ -36,6 +36,44 @@ public class EquipmentService {
     public void init() {
         if (equipmentRepository.count() == 0) {
             seedEquipmentCatalog();
+        } else {
+            fixOutdatedCatalogImages();
+        }
+    }
+
+    @Transactional
+    public void fixOutdatedCatalogImages() {
+        List<EquipmentEntity> all = equipmentRepository.findAll();
+        boolean changed = false;
+        for (EquipmentEntity eq : all) {
+            String img = eq.getImageUrl();
+            if (img == null || img.contains("photo-1592878904946-b3cd8ae243d0") || img.contains("photo-1530595467537-0b5996c41f2d") || img.contains("photo-1509391365360-2e959784a276") || img.contains("photo-1544197150-b99a580bb7a8")) {
+                String cat = eq.getCategory() != null ? eq.getCategory().toUpperCase() : "";
+                if (cat.contains("TRACTOR")) {
+                    eq.setImageUrl(eq.getName() != null && eq.getName().contains("John Deere")
+                            ? "https://images.unsplash.com/photo-1589923188900-85dae523342b?w=800&auto=format&fit=crop&q=80"
+                            : "https://images.unsplash.com/photo-1594771804886-a933bb2d609b?w=800&auto=format&fit=crop&q=80");
+                } else if (cat.contains("HARVESTER")) {
+                    eq.setImageUrl("https://images.unsplash.com/photo-1586771107445-d3ca888129ff?w=800&auto=format&fit=crop&q=80");
+                } else if (cat.contains("DRONE")) {
+                    eq.setImageUrl("https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&auto=format&fit=crop&q=80");
+                } else if (cat.contains("ROTAVATOR")) {
+                    eq.setImageUrl("https://images.unsplash.com/photo-1592982537447-7440770cbfc9?w=800&auto=format&fit=crop&q=80");
+                } else if (cat.contains("LEVELER")) {
+                    eq.setImageUrl("https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=80");
+                } else if (cat.contains("PUMP")) {
+                    eq.setImageUrl("https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=800&auto=format&fit=crop&q=80");
+                } else if (cat.contains("BALER")) {
+                    eq.setImageUrl("https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&auto=format&fit=crop&q=80");
+                } else {
+                    eq.setImageUrl("https://images.unsplash.com/photo-1594771804886-a933bb2d609b?w=800&auto=format&fit=crop&q=80");
+                }
+                changed = true;
+            }
+        }
+        if (changed) {
+            equipmentRepository.saveAll(all);
+            log.info("Successfully updated legacy equipment catalog images with verified agricultural photos.");
         }
     }
 
@@ -63,7 +101,7 @@ public class EquipmentService {
                         .ownerName("Ramesh Gowda")
                         .ownerPhone("+91 98450 12893")
                         .owner(defaultOwner)
-                        .imageUrl("https://images.unsplash.com/photo-1592878904946-b3cd8ae243d0?w=800&auto=format&fit=crop&q=80")
+                        .imageUrl("https://images.unsplash.com/photo-1594771804886-a933bb2d609b?w=800&auto=format&fit=crop&q=80")
                         .description("47 HP powerhouse with advanced hydraulic lift, 8 forward + 2 reverse gears, power steering, and low diesel consumption.")
                         .specsJson("{\"engine\":\"4-Cylinder Water Cooled\",\"hydraulics\":\"1600 kg capacity\",\"fuelTank\":\"48 Liters\",\"ptoHp\":\"42 HP\"}")
                         .rating(4.9)
@@ -89,7 +127,7 @@ public class EquipmentService {
                         .ownerName("Chennappa Farmer FPO")
                         .ownerPhone("+91 94481 33490")
                         .owner(defaultOwner)
-                        .imageUrl("https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=800&auto=format&fit=crop&q=80")
+                        .imageUrl("https://images.unsplash.com/photo-1589923188900-85dae523342b?w=800&auto=format&fit=crop&q=80")
                         .description("Piston cooling jet technology with dual clutch, oil-immersed disc brakes, and high backup torque for heavy field operations.")
                         .specsJson("{\"transmission\":\"8F + 4R Collarshift\",\"steering\":\"Power Steering\",\"liftCapacity\":\"1600 kg\",\"ptoRpm\":\"540 @ 2100\"}")
                         .rating(4.8)
@@ -115,7 +153,7 @@ public class EquipmentService {
                         .ownerName("Cauvery Agri Hiring Center")
                         .ownerPhone("+91 98860 44102")
                         .owner(defaultOwner)
-                        .imageUrl("https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=80")
+                        .imageUrl("https://images.unsplash.com/photo-1586771107445-d3ca888129ff?w=800&auto=format&fit=crop&q=80")
                         .description("High-speed rubber crawler paddy and wheat harvester with minimal grain loss (<1.5%), wide cutter bar, and 1250L grain tank.")
                         .specsJson("{\"cuttingWidth\":\"2.0 meters\",\"grainTank\":\"1250 Liters\",\"crawler\":\"Wide Rubber Track\",\"fuelEfficiency\":\"8 L/hr\"}")
                         .rating(4.9)
@@ -141,7 +179,7 @@ public class EquipmentService {
                         .ownerName("SkyKrishi Drone Pilot Hub")
                         .ownerPhone("+91 97402 88194")
                         .owner(defaultOwner)
-                        .imageUrl("https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=800&auto=format&fit=crop&q=80")
+                        .imageUrl("https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&auto=format&fit=crop&q=80")
                         .description("DGCA Certified pilot provided. 40 kg spray payload, dual atomized centrifugal nozzles, omnidirectional phased array radar, covers 1 acre in 7 mins.")
                         .specsJson("{\"payload\":\"40 Liters\",\"sprayWidth\":\"11 meters\",\"battery\":\"30000 mAh Dual\",\"obstacleAvoidance\":\"Active Phased Radar\"}")
                         .rating(5.0)
@@ -167,7 +205,7 @@ public class EquipmentService {
                         .ownerName("Basavaraju S.")
                         .ownerPhone("+91 96112 55901")
                         .owner(defaultOwner)
-                        .imageUrl("https://images.unsplash.com/photo-1628352081506-83c43123ed6d?w=800&auto=format&fit=crop&q=80")
+                        .imageUrl("https://images.unsplash.com/photo-1592982537447-7440770cbfc9?w=800&auto=format&fit=crop&q=80")
                         .description("Heavy-duty multi-speed gearbox with Boron steel L-type blades. Delivers optimal soil tilth and weed eradication in single pass.")
                         .specsJson("{\"workingWidth\":\"180 cm\",\"blades\":\"48 Boron Steel\",\"gearbox\":\"Multi-Speed 540/1000 RPM\",\"weight\":\"440 kg\"}")
                         .rating(4.7)
@@ -193,7 +231,7 @@ public class EquipmentService {
                         .ownerName("PrecisionAg Solutions")
                         .ownerPhone("+91 99014 66205")
                         .owner(defaultOwner)
-                        .imageUrl("https://images.unsplash.com/photo-1595246140625-573b715d11dc?w=800&auto=format&fit=crop&q=80")
+                        .imageUrl("https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=80")
                         .description("High-precision dual slope laser transmitter and hydraulic drag scraper. Reduces irrigation water requirement by 35% and improves uniformity.")
                         .specsJson("{\"workingRange\":\"800 meters\",\"accuracy\":\"±1.5 mm per 30m\",\"bladeWidth\":\"2.1 meters\",\"controlSystem\":\"Hydraulic Proportional\"}")
                         .rating(4.8)
@@ -219,7 +257,7 @@ public class EquipmentService {
                         .ownerName("Nanjegowda")
                         .ownerPhone("+91 94801 77312")
                         .owner(defaultOwner)
-                        .imageUrl("https://images.unsplash.com/photo-1509391365360-2e959784a276?w=800&auto=format&fit=crop&q=80")
+                        .imageUrl("https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=800&auto=format&fit=crop&q=80")
                         .description("Portable trailer-mounted solar pumping system with backup diesel generator. 40,000 LPH discharge capacity.")
                         .specsJson("{\"head\":\"30-50 meters\",\"discharge\":\"40,000 LPH\",\"solarArray\":\"7.5 kW Foldable\",\"coupling\":\"Monoblock Quick Disconnect\"}")
                         .rating(4.7)
@@ -245,7 +283,7 @@ public class EquipmentService {
                         .ownerName("GreenField Residue Management")
                         .ownerPhone("+91 97311 99044")
                         .owner(defaultOwner)
-                        .imageUrl("https://images.unsplash.com/photo-1530595467537-0b5996c41f2d?w=800&auto=format&fit=crop&q=80")
+                        .imageUrl("https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&auto=format&fit=crop&q=80")
                         .description("Transforms paddy straw and sugarcane trash into high-density commercial fodder bales, eliminating stubble burning.")
                         .specsJson("{\"baleSize\":\"4x5 feet\",\"baleWeight\":\"280-350 kg\",\"capacity\":\"40-50 bales/hr\",\"twineWrapping\":\"Automatic Dual\"}")
                         .rating(4.9)
@@ -260,14 +298,16 @@ public class EquipmentService {
         if (bookingRepository.count() == 0 && !catalog.isEmpty()) {
             EquipmentEntity tractor = catalog.get(0);
             EquipmentEntity drone = catalog.get(3);
+            String defaultRenterName = defaultOwner != null ? defaultOwner.getFullName() : "Thomas Shelby";
+            String defaultRenterPhone = defaultOwner != null && defaultOwner.getPhoneNumber() != null ? defaultOwner.getPhoneNumber() : "+91 98451 00122";
 
             List<EquipmentBookingEntity> initialBookings = List.of(
                     EquipmentBookingEntity.builder()
                             .bookingReference("EQB-2026-4102")
                             .equipment(tractor)
                             .renter(defaultOwner)
-                            .renterName("Adithya Yadav")
-                            .renterPhone("+91 98451 00122")
+                            .renterName(defaultRenterName)
+                            .renterPhone(defaultRenterPhone)
                             .deliveryAddress("Plot 4, Kaveri Green Acres, Mandya")
                             .startDate(LocalDate.now().plusDays(2))
                             .endDate(LocalDate.now().plusDays(4))
@@ -391,7 +431,7 @@ public class EquipmentService {
                 .owner(currentUser)
                 .imageUrl(req.getImageUrl() != null && !req.getImageUrl().isEmpty()
                         ? req.getImageUrl()
-                        : "https://images.unsplash.com/photo-1592878904946-b3cd8ae243d0?w=800&auto=format&fit=crop&q=80")
+                        : "https://images.unsplash.com/photo-1594771804886-a933bb2d609b?w=800&auto=format&fit=crop&q=80")
                 .description(req.getDescription())
                 .specsJson(req.getSpecsJson() != null ? req.getSpecsJson() : "{}")
                 .rating(5.0)

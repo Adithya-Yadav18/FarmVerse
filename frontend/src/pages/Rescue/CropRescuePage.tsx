@@ -14,6 +14,7 @@ import {
 } from 'react-icons/md';
 import styles from './CropRescuePage.module.css';
 import rescueService from '../../services/rescueService';
+import { useAuth } from '../../context/AuthContext';
 import type {
   RescueTicket,
   TriggerSosPayload,
@@ -22,6 +23,7 @@ import type {
 } from '../../types';
 
 export default function CropRescuePage() {
+  const { user } = useAuth();
   const [tickets, setTickets] = useState<RescueTicket[]>([]);
   const [activeTicket, setActiveTicket] = useState<RescueTicket | null>(null);
   const [presets, setPresets] = useState<EmergencyCategoryPreset[]>([]);
@@ -37,10 +39,20 @@ export default function CropRescuePage() {
     affectedAcres: 2.5,
     cropGrowthStage: 'Tillering Stage (45-60 Days)',
     symptomsDescription: '',
-    farmerName: 'Adithya Yadav',
-    farmerPhone: '+91 98450 11223',
+    farmerName: user?.name || 'Thomas Shelby',
+    farmerPhone: user?.phone || '+91 98450 12345',
   });
   const [isSubmittingSos, setIsSubmittingSos] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (user?.name) {
+      setSosForm(prev => ({
+        ...prev,
+        farmerName: user.name,
+        farmerPhone: user.phone || prev.farmerPhone,
+      }));
+    }
+  }, [user]);
 
   useEffect(() => {
     loadData();
@@ -113,14 +125,14 @@ export default function CropRescuePage() {
 
   return (
     <div className={styles.container}>
-      {/* 24/7 Crisis Hotline Banner */}
+      {/* 24/7 National Agronomic Emergency Response Banner */}
       <div className={styles.hotlineBanner}>
         <div className={styles.hotlineLeft}>
           <div className={styles.pulsingDot} />
           <span>24/7 NATIONAL CROP EMERGENCY RESPONSE NETWORK</span>
         </div>
         <div>
-          <span>Crisis Hotline: 📞 1800-180-1551 (Toll Free Kisan Call Center)</span>
+          <span>Operational Response: Active KVK Agronomist Dispatch • PMFBY Rapid Dossier Verification</span>
         </div>
       </div>
 
