@@ -18,35 +18,15 @@ import { Skeleton } from '../../components/ui/Skeleton/Skeleton';
 
 import api from '../../services/api';
 import { mandiService } from '../../services/mandiService';
-import { useAuth } from '../../context/AuthContext';
 import type {
   Farm, MandiPrice, ArbitrageResponse, CommodityPriceHistory,
-  MarketSummaryStats, UserRole
+  MarketSummaryStats
 } from '../../types';
 import styles from './MandiPage.module.css';
 
 const CATEGORIES = ['All', 'Grains', 'Vegetables', 'Fruits', 'Cash Crops', 'Oilseeds', 'Spices'];
 
 export default function MandiPage() {
-  const { user } = useAuth();
-  const rawRole = (user?.role || 'Farmer').replace('ROLE_', '').replace('_', ' ');
-  const userRole: UserRole =
-    rawRole.toLowerCase().includes('normal') || rawRole.toLowerCase() === 'user'
-      ? 'Normal User'
-      : rawRole.toLowerCase().includes('admin')
-      ? 'Admin'
-      : rawRole.toLowerCase().includes('agronomist')
-      ? 'Agronomist'
-      : 'Farmer';
-
-  // Interactive 4-Role Perspective Selector
-  const [activePerspective, setActivePerspective] = useState<UserRole>(userRole);
-
-  const isFarmer = activePerspective === 'Farmer';
-  const isAgronomist = activePerspective === 'Agronomist';
-  const isAdmin = activePerspective === 'Admin';
-  const isNormalUser = activePerspective === 'Normal User';
-
   // Farms state
   const [farms, setFarms] = useState<Farm[]>([]);
   const [selectedFarmId, setSelectedFarmId] = useState<number | null>(null);
@@ -177,18 +157,16 @@ export default function MandiPage() {
         breadcrumbs={[{ label: 'e-NAM Market Prices' }]}
         actions={
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {isAdmin && (
-              <Button
-                variant="primary"
-                leftIcon={<MdRefresh />}
-                loading={isSyncing}
-                onClick={handleAdminSync}
-              >
-                Sync e-NAM Feeds
-              </Button>
-            )}
             <Button
               variant="outline"
+              leftIcon={<MdRefresh />}
+              loading={isSyncing}
+              onClick={handleAdminSync}
+            >
+              Sync e-NAM Feeds
+            </Button>
+            <Button
+              variant="primary"
               leftIcon={<MdRefresh />}
               onClick={loadPrices}
             >
@@ -218,64 +196,7 @@ export default function MandiPage() {
         </div>
       </div>
 
-      {/* Interactive 4-Role Perspective Selector */}
-      <div className={styles.roleBar}>
-        <span className={styles.roleBarLabel}>Role Perspective:</span>
-        <button
-          type="button"
-          className={`${styles.roleTab} ${isFarmer ? styles.roleTabActive : ''}`}
-          onClick={() => setActivePerspective('Farmer')}
-        >
-          🧑‍🌾 Farmer (Harvest Profit & Arbitrage)
-        </button>
-        <button
-          type="button"
-          className={`${styles.roleTab} ${isAgronomist ? styles.roleTabActive : ''}`}
-          onClick={() => setActivePerspective('Agronomist')}
-        >
-          🔬 Agronomist (Crop Economics & Advisory)
-        </button>
-        <button
-          type="button"
-          className={`${styles.roleTab} ${isAdmin ? styles.roleTabActive : ''}`}
-          onClick={() => setActivePerspective('Admin')}
-        >
-          🛡️ Admin (Market Feeds & MSP Oversight)
-        </button>
-        <button
-          type="button"
-          className={`${styles.roleTab} ${isNormalUser ? styles.roleTabActive : ''}`}
-          onClick={() => setActivePerspective('Normal User')}
-        >
-          🏷️ Normal User (Wholesale Price Index)
-        </button>
-      </div>
-
-      {/* Role Capability Banner */}
-      <div className={styles.roleInfoBanner}>
-        {isFarmer && (
-          <div>
-            <strong>🧑‍🌾 Farmer Capability:</strong> Compare net profits across nearby APMC mandis after deducting transport freight, check if current prices exceed official Government MSP, and sell at maximum margin.
-          </div>
-        )}
-        {isAgronomist && (
-          <div>
-            <strong>🔬 Agronomist Capability:</strong> Analyze multi-district commodity price volatility, evaluate crop profitability for upcoming sowing cycles, and issue harvest selling vs storage timing advisories.
-          </div>
-        )}
-        {isAdmin && (
-          <div>
-            <strong>🛡️ Admin Capability:</strong> National agricultural commodity market oversight, trigger e-NAM live data sync, configure Government MSP benchmarks, and flag artificial district price anomalies.
-          </div>
-        )}
-        {isNormalUser && (
-          <div>
-            <strong>🏷️ Normal User / Buyer Capability:</strong> Access transparent farm-gate wholesale commodity prices, verify fair market rates without middleman commissions, and source direct from producers.
-          </div>
-        )}
-      </div>
-
-      {/* Mandi Price Arbitrage Calculator Widget (Farmer Highlight Feature) */}
+      {/* Mandi Price Arbitrage Calculator Widget */}
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
           <div>
