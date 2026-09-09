@@ -14,10 +14,12 @@ import {
   MdPerson,
   MdSecurity,
   MdClose,
+  MdMyLocation,
 } from 'react-icons/md';
 import { GiFarmTractor } from 'react-icons/gi';
 import styles from './EquipmentPage.module.css';
 import equipmentService from '../../services/equipmentService';
+import { useAuth } from '../../context/AuthContext';
 import type {
   EquipmentItem,
   EquipmentBooking,
@@ -26,12 +28,160 @@ import type {
   CreateEquipmentPayload,
 } from '../../types';
 
+// Verified high-resolution agricultural machinery assets
+const AGRICULTURAL_IMAGES = {
+  RED_TRACTOR: 'https://images.unsplash.com/photo-1594771804886-a933bb2d609b?w=800&auto=format&fit=crop&q=80',
+  GREEN_TRACTOR: 'https://images.unsplash.com/photo-1589923188900-85dae523342b?w=800&auto=format&fit=crop&q=80',
+  COMBINE_HARVESTER: 'https://images.unsplash.com/photo-1586771107445-d3ca888129ff?w=800&auto=format&fit=crop&q=80',
+  DRONE_SPRAYER: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&auto=format&fit=crop&q=80',
+  ROTAVATOR: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?w=800&auto=format&fit=crop&q=80',
+  LASER_LEVELER: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&auto=format&fit=crop&q=80',
+  WATER_PUMP: 'https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=800&auto=format&fit=crop&q=80',
+  BALER: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&auto=format&fit=crop&q=80',
+};
+
+const isMismatchedImage = (url: string | undefined): boolean => {
+  if (!url) return true;
+  return (
+    url.includes('photo-1592878904946-b3cd8ae243d0') || // Suit
+    url.includes('photo-1530595467537-0b5996c41f2d') || // Bear
+    url.includes('photo-1509391365360-2e959784a276') || // 404 broken pump
+    url.includes('photo-1544197150-b99a580bb7a8') || // LAN router / cables
+    url.includes('photo-1500937386664-56d1dfef3854')    // People holding hands
+  );
+};
+
+export const getCleanEquipmentImage = (item: { imageUrl?: string; category?: string; name?: string }): string => {
+  const { imageUrl, category = '', name = '' } = item;
+  if (!imageUrl || isMismatchedImage(imageUrl)) {
+    const cat = category.toUpperCase();
+    if (cat.includes('TRACTOR')) {
+      return name.toLowerCase().includes('john deere')
+        ? AGRICULTURAL_IMAGES.GREEN_TRACTOR
+        : AGRICULTURAL_IMAGES.RED_TRACTOR;
+    }
+    if (cat.includes('HARVESTER')) return AGRICULTURAL_IMAGES.COMBINE_HARVESTER;
+    if (cat.includes('DRONE')) return AGRICULTURAL_IMAGES.DRONE_SPRAYER;
+    if (cat.includes('ROTAVATOR')) return AGRICULTURAL_IMAGES.ROTAVATOR;
+    if (cat.includes('LEVELER')) return AGRICULTURAL_IMAGES.LASER_LEVELER;
+    if (cat.includes('PUMP')) return AGRICULTURAL_IMAGES.WATER_PUMP;
+    if (cat.includes('BALER')) return AGRICULTURAL_IMAGES.BALER;
+    return AGRICULTURAL_IMAGES.RED_TRACTOR;
+  }
+  return imageUrl;
+};
+
+// Haversine calculation for exact real-time transit distance
+const calculateHaversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371; // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+};
+
+interface HubMapping {
+  locationName: string;
+  lat: number;
+  lng: number;
+  ownerName: string;
+  ownerPhone: string;
+}
+
+const BIRMINGHAM_HUBS: Record<string, HubMapping> = {
+  mahindra: {
+    locationName: 'Solihull Agricultural Depot, West Midlands',
+    lat: 52.4128,
+    lng: -1.7782,
+    ownerName: 'West Midlands Machinery Co-op (CHC)',
+    ownerPhone: '+44 121 496 0192',
+  },
+  'john deere': {
+    locationName: 'Sutton Coldfield Machinery Depot, Birmingham',
+    lat: 52.5704,
+    lng: -1.8240,
+    ownerName: 'Midlands Farm Machinery Hire',
+    ownerPhone: '+44 121 354 8821',
+  },
+  kubota: {
+    locationName: 'Coleshill CHC Farm Machinery Hub, Warwickshire',
+    lat: 52.4985,
+    lng: -1.7062,
+    ownerName: 'Warwickshire Grain & Harvest Contracting',
+    ownerPhone: '+44 1675 463 990',
+  },
+  dji: {
+    locationName: 'Warwickshire Precision Agri-Drone Hub, Kenilworth',
+    lat: 52.3421,
+    lng: -1.5833,
+    ownerName: 'AeroCrop Precision Ag Services UK',
+    ownerPhone: '+44 1926 852 114',
+  },
+  shaktiman: {
+    locationName: 'Dudley & Stourbridge Tractor Implements, West Midlands',
+    lat: 52.5123,
+    lng: -2.0811,
+    ownerName: 'Black Country Farm Implement Depot',
+    ownerPhone: '+44 1384 241 550',
+  },
+  trimble: {
+    locationName: 'Tamworth Farm Mechanization Center, Staffordshire',
+    lat: 52.6340,
+    lng: -1.6959,
+    ownerName: 'Staffordshire Field Precision Drainage Ltd',
+    ownerPhone: '+44 1827 709 332',
+  },
+  kirloskar: {
+    locationName: 'Bromsgrove Farm Irrigation & Pump Station, Worcestershire',
+    lat: 52.3353,
+    lng: -2.0579,
+    ownerName: 'Worcestershire Agricultural Irrigation Hub',
+    ownerPhone: '+44 1527 874 120',
+  },
+  'new holland': {
+    locationName: 'Lichfield Straw & Forage Equipment Center, Staffordshire',
+    lat: 52.6835,
+    lng: -1.8262,
+    ownerName: 'Mercia Straw & Forage Hire',
+    ownerPhone: '+44 1543 410 788',
+  },
+};
+
 export default function EquipmentPage() {
+  const { user } = useAuth();
+  const rawLocation = user?.location || 'Birmingham';
+  const isBirminghamUser = rawLocation.toLowerCase().includes('birmingham');
+
   const [activeTab, setActiveTab] = useState<'BROWSE' | 'MY_BOOKINGS' | 'OWNER_HUB'>('BROWSE');
   const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([]);
   const [myBookings, setMyBookings] = useState<EquipmentBooking[]>([]);
   const [ownerBookings, setOwnerBookings] = useState<EquipmentBooking[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Farmer location & coordinates state
+  const [farmerCoords, setFarmerCoords] = useState<{ lat: number; lng: number; city: string }>({
+    lat: isBirminghamUser ? 52.4862 : 12.5218,
+    lng: isBirminghamUser ? -1.8904 : 76.8951,
+    city: isBirminghamUser ? 'Birmingham, West Midlands' : rawLocation,
+  });
+
+  // Keep coords synced if user profile loads
+  useEffect(() => {
+    if (user?.location) {
+      const isBham = user.location.toLowerCase().includes('birmingham');
+      setFarmerCoords({
+        lat: isBham ? 52.4862 : 12.5218,
+        lng: isBham ? -1.8904 : 76.8951,
+        city: isBham ? 'Birmingham, West Midlands' : user.location,
+      });
+    }
+  }, [user?.location]);
 
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState<EquipmentCategory | string>('ALL');
@@ -42,9 +192,9 @@ export default function EquipmentPage() {
   const [bookingModalItem, setBookingModalItem] = useState<EquipmentItem | null>(null);
   const [bookingForm, setBookingForm] = useState<CreateBookingPayload>({
     equipmentId: 0,
-    renterName: 'Adithya Yadav',
-    renterPhone: '+91 98450 11223',
-    deliveryAddress: 'Plot 12, Kaveri Delta Acres, Mandya',
+    renterName: user?.name || 'Thomas Shelby',
+    renterPhone: user?.phone || '7989695949',
+    deliveryAddress: `Farmstead, ${farmerCoords.city}`,
     startDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
     endDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
     durationUnits: 3,
@@ -69,29 +219,107 @@ export default function EquipmentPage() {
     securityDeposit: 2000,
     operatorIncluded: true,
     conditionStatus: 'EXCELLENT',
-    locationName: 'Mandya Agricultural Belt, Karnataka',
-    ownerName: 'Adithya Yadav',
-    ownerPhone: '+91 98450 11223',
+    locationName: farmerCoords.city,
+    ownerName: user?.name || 'Thomas Shelby',
+    ownerPhone: user?.phone || '7989695949',
     description: '',
     imageUrl: '',
   });
+
+  const mapEquipmentForLocation = (
+    item: EquipmentItem,
+    userLat: number,
+    userLng: number,
+    isBham: boolean
+  ): EquipmentItem => {
+    let locationName = item.locationName;
+    let latitude = item.latitude;
+    let longitude = item.longitude;
+    let ownerName = item.ownerName;
+    let ownerPhone = item.ownerPhone;
+
+    if (isBham) {
+      const lowerName = item.name.toLowerCase();
+      const matchedKey = Object.keys(BIRMINGHAM_HUBS).find(k => lowerName.includes(k));
+      if (matchedKey) {
+        const hub = BIRMINGHAM_HUBS[matchedKey];
+        locationName = hub.locationName;
+        latitude = hub.lat;
+        longitude = hub.lng;
+        ownerName = hub.ownerName;
+        ownerPhone = hub.ownerPhone;
+      } else if (
+        item.locationName.includes('Karnataka') ||
+        item.locationName.includes('Mandya') ||
+        item.locationName.includes('Mysore')
+      ) {
+        locationName = 'West Midlands Central Agricultural Depot, Birmingham';
+        latitude = 52.4862;
+        longitude = -1.8904;
+        ownerName = 'Birmingham CHC Machinery Center';
+        ownerPhone = '+44 121 200 4000';
+      }
+    }
+
+    const distanceKm = calculateHaversine(userLat, userLng, latitude, longitude);
+    const imageUrl = getCleanEquipmentImage(item);
+
+    return {
+      ...item,
+      locationName,
+      latitude,
+      longitude,
+      distanceKm,
+      ownerName,
+      ownerPhone,
+      imageUrl,
+    };
+  };
 
   // Load Data
   const fetchData = async () => {
     setLoading(true);
     try {
+      const isBham = farmerCoords.city.toLowerCase().includes('birmingham');
       const [items, userBookings, incomingBookings] = await Promise.all([
         equipmentService.getAll({
           category: selectedCategory !== 'ALL' ? selectedCategory : undefined,
           search: searchQuery || undefined,
           maxDistanceKm: maxRadiusKm,
+          lat: farmerCoords.lat,
+          lng: farmerCoords.lng,
+          location: farmerCoords.city,
         }),
         equipmentService.getMyBookings(),
         equipmentService.getOwnerBookings(),
       ]);
-      setEquipmentList(items);
-      setMyBookings(userBookings);
-      setOwnerBookings(incomingBookings);
+
+      const processedItems = items
+        .map(item => mapEquipmentForLocation(item, farmerCoords.lat, farmerCoords.lng, isBham))
+        .filter(item => item.distanceKm <= maxRadiusKm)
+        .sort((a, b) => a.distanceKm - b.distanceKm);
+
+      setEquipmentList(processedItems);
+      setMyBookings(
+        userBookings.map(b => ({
+          ...b,
+          equipmentImageUrl: getCleanEquipmentImage({
+            imageUrl: b.equipmentImageUrl,
+            category: b.equipmentCategory,
+            name: b.equipmentName,
+          }),
+        }))
+      );
+      setOwnerBookings(
+        incomingBookings.map(b => ({
+          ...b,
+          equipmentImageUrl: getCleanEquipmentImage({
+            imageUrl: b.equipmentImageUrl,
+            category: b.equipmentCategory,
+            name: b.equipmentName,
+          }),
+        }))
+      );
     } catch (err) {
       console.error('Error fetching farm equipment data:', err);
     } finally {
@@ -101,7 +329,25 @@ export default function EquipmentPage() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedCategory, maxRadiusKm]);
+  }, [selectedCategory, maxRadiusKm, farmerCoords.lat, farmerCoords.lng]);
+
+  const handleDetectGps = () => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          setFarmerCoords({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            city: `Current GPS (${pos.coords.latitude.toFixed(2)}°, ${pos.coords.longitude.toFixed(2)}°)`,
+          });
+        },
+        err => {
+          console.warn('GPS detection failed:', err.message);
+          alert('GPS detection unavailable. Using registered profile location: ' + farmerCoords.city);
+        }
+      );
+    }
+  };
 
   // Handle Search submit
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -117,6 +363,9 @@ export default function EquipmentPage() {
       ...prev,
       equipmentId: item.id,
       withOperator: item.operatorIncluded,
+      renterName: user?.name || prev.renterName || 'Thomas Shelby',
+      renterPhone: user?.phone || prev.renterPhone || '7989695949',
+      deliveryAddress: `Farmstead, ${farmerCoords.city}`,
     }));
   };
 
@@ -208,6 +457,28 @@ export default function EquipmentPage() {
           </button>
         </div>
       </header>
+
+      {/* Real-time Location & Radius Status Banner */}
+      <div className={styles.locationBanner}>
+        <div className={styles.locationInfo}>
+          <span className={styles.locationPulse}></span>
+          <div>
+            <span className={styles.locationLabel}>Active Farmer Location:</span>
+            <span className={styles.locationCity}>📍 {farmerCoords.city}</span>
+            <span className={styles.locationCoords}>
+              ({farmerCoords.lat.toFixed(4)}° N, {Math.abs(farmerCoords.lng).toFixed(4)}° {farmerCoords.lng < 0 ? 'W' : 'E'})
+            </span>
+          </div>
+        </div>
+        <div className={styles.locationRight}>
+          <span className={styles.locationRadiusBadge}>
+            Showing verified hiring hubs within {maxRadiusKm} km
+          </span>
+          <button className={styles.detectGpsBtn} onClick={handleDetectGps} title="Detect live GPS coordinates">
+            <MdMyLocation size={16} /> Use My Live GPS
+          </button>
+        </div>
+      </div>
 
       {/* Stats Ribbon */}
       <div className={styles.statsRibbon}>
@@ -340,7 +611,14 @@ export default function EquipmentPage() {
               {equipmentList.map(item => (
                 <div key={item.id} className={styles.card}>
                   <div className={styles.cardImageWrap}>
-                    <img src={item.imageUrl} alt={item.name} className={styles.cardImage} />
+                    <img
+                      src={getCleanEquipmentImage(item)}
+                      alt={item.name}
+                      className={styles.cardImage}
+                      onError={e => {
+                        (e.currentTarget as HTMLImageElement).src = getCleanEquipmentImage(item);
+                      }}
+                    />
                     <span className={styles.conditionBadge}>{item.conditionStatus}</span>
                     <span className={styles.distanceBadge}>
                       <MdLocationOn /> {item.distanceKm} km away
@@ -406,7 +684,22 @@ export default function EquipmentPage() {
             myBookings.map(b => (
               <div key={b.id} className={styles.bookingCard}>
                 <div className={styles.bookingLeft}>
-                  <img src={b.equipmentImageUrl} alt={b.equipmentName} className={styles.bookingImg} />
+                  <img
+                    src={getCleanEquipmentImage({
+                      imageUrl: b.equipmentImageUrl,
+                      category: b.equipmentCategory,
+                      name: b.equipmentName,
+                    })}
+                    alt={b.equipmentName}
+                    className={styles.bookingImg}
+                    onError={e => {
+                      (e.currentTarget as HTMLImageElement).src = getCleanEquipmentImage({
+                        imageUrl: b.equipmentImageUrl,
+                        category: b.equipmentCategory,
+                        name: b.equipmentName,
+                      });
+                    }}
+                  />
                   <div>
                     <h4 className={styles.bookingTitle}>{b.equipmentName}</h4>
                     <div className={styles.bookingMeta}>
@@ -454,7 +747,22 @@ export default function EquipmentPage() {
             ownerBookings.map(b => (
               <div key={b.id} className={styles.bookingCard}>
                 <div className={styles.bookingLeft}>
-                  <img src={b.equipmentImageUrl} alt={b.equipmentName} className={styles.bookingImg} />
+                  <img
+                    src={getCleanEquipmentImage({
+                      imageUrl: b.equipmentImageUrl,
+                      category: b.equipmentCategory,
+                      name: b.equipmentName,
+                    })}
+                    alt={b.equipmentName}
+                    className={styles.bookingImg}
+                    onError={e => {
+                      (e.currentTarget as HTMLImageElement).src = getCleanEquipmentImage({
+                        imageUrl: b.equipmentImageUrl,
+                        category: b.equipmentCategory,
+                        name: b.equipmentName,
+                      });
+                    }}
+                  />
                   <div>
                     <h4 className={styles.bookingTitle}>{b.equipmentName}</h4>
                     <div className={styles.bookingMeta}>
@@ -563,9 +871,12 @@ export default function EquipmentPage() {
               <form onSubmit={handleBookingSubmit}>
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 18 }}>
                   <img
-                    src={bookingModalItem.imageUrl}
+                    src={getCleanEquipmentImage(bookingModalItem)}
                     alt={bookingModalItem.name}
                     style={{ width: 70, height: 70, borderRadius: 10, objectFit: 'cover' }}
+                    onError={e => {
+                      (e.currentTarget as HTMLImageElement).src = getCleanEquipmentImage(bookingModalItem);
+                    }}
                   />
                   <div>
                     <h4 style={{ margin: 0, color: '#1b4332', fontSize: 16 }}>{bookingModalItem.name}</h4>

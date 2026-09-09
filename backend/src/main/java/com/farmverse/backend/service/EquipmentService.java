@@ -47,27 +47,8 @@ public class EquipmentService {
         boolean changed = false;
         for (EquipmentEntity eq : all) {
             String img = eq.getImageUrl();
-            if (img == null || img.contains("photo-1592878904946-b3cd8ae243d0") || img.contains("photo-1530595467537-0b5996c41f2d") || img.contains("photo-1509391365360-2e959784a276") || img.contains("photo-1544197150-b99a580bb7a8")) {
-                String cat = eq.getCategory() != null ? eq.getCategory().toUpperCase() : "";
-                if (cat.contains("TRACTOR")) {
-                    eq.setImageUrl(eq.getName() != null && eq.getName().contains("John Deere")
-                            ? "https://images.unsplash.com/photo-1589923188900-85dae523342b?w=800&auto=format&fit=crop&q=80"
-                            : "https://images.unsplash.com/photo-1594771804886-a933bb2d609b?w=800&auto=format&fit=crop&q=80");
-                } else if (cat.contains("HARVESTER")) {
-                    eq.setImageUrl("https://images.unsplash.com/photo-1586771107445-d3ca888129ff?w=800&auto=format&fit=crop&q=80");
-                } else if (cat.contains("DRONE")) {
-                    eq.setImageUrl("https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&auto=format&fit=crop&q=80");
-                } else if (cat.contains("ROTAVATOR")) {
-                    eq.setImageUrl("https://images.unsplash.com/photo-1592982537447-7440770cbfc9?w=800&auto=format&fit=crop&q=80");
-                } else if (cat.contains("LEVELER")) {
-                    eq.setImageUrl("https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=80");
-                } else if (cat.contains("PUMP")) {
-                    eq.setImageUrl("https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=800&auto=format&fit=crop&q=80");
-                } else if (cat.contains("BALER")) {
-                    eq.setImageUrl("https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&auto=format&fit=crop&q=80");
-                } else {
-                    eq.setImageUrl("https://images.unsplash.com/photo-1594771804886-a933bb2d609b?w=800&auto=format&fit=crop&q=80");
-                }
+            if (img == null || isBadImage(img)) {
+                eq.setImageUrl(sanitizeImage(img, eq.getCategory(), eq.getName()));
                 changed = true;
             }
         }
@@ -75,6 +56,41 @@ public class EquipmentService {
             equipmentRepository.saveAll(all);
             log.info("Successfully updated legacy equipment catalog images with verified agricultural photos.");
         }
+    }
+
+    private boolean isBadImage(String img) {
+        if (img == null) return true;
+        return img.contains("photo-1592878904946-b3cd8ae243d0")  // Suit
+                || img.contains("photo-1530595467537-0b5996c41f2d")  // Bear
+                || img.contains("photo-1509391365360-2e959784a276")  // 404 broken pump
+                || img.contains("photo-1544197150-b99a580bb7a8")  // LAN router / cables
+                || img.contains("photo-1500937386664-56d1dfef3854"); // Holding hands in field
+    }
+
+    private String sanitizeImage(String img, String category, String name) {
+        if (img == null || isBadImage(img)) {
+            String cat = category != null ? category.toUpperCase() : "";
+            if (cat.contains("TRACTOR")) {
+                return (name != null && name.contains("John Deere"))
+                        ? "https://images.unsplash.com/photo-1589923188900-85dae523342b?w=800&auto=format&fit=crop&q=80"
+                        : "https://images.unsplash.com/photo-1594771804886-a933bb2d609b?w=800&auto=format&fit=crop&q=80";
+            } else if (cat.contains("HARVESTER")) {
+                return "https://images.unsplash.com/photo-1586771107445-d3ca888129ff?w=800&auto=format&fit=crop&q=80";
+            } else if (cat.contains("DRONE")) {
+                return "https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&auto=format&fit=crop&q=80";
+            } else if (cat.contains("ROTAVATOR")) {
+                return "https://images.unsplash.com/photo-1592982537447-7440770cbfc9?w=800&auto=format&fit=crop&q=80";
+            } else if (cat.contains("LEVELER")) {
+                return "https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&auto=format&fit=crop&q=80";
+            } else if (cat.contains("PUMP")) {
+                return "https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=800&auto=format&fit=crop&q=80";
+            } else if (cat.contains("BALER")) {
+                return "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&auto=format&fit=crop&q=80";
+            } else {
+                return "https://images.unsplash.com/photo-1594771804886-a933bb2d609b?w=800&auto=format&fit=crop&q=80";
+            }
+        }
+        return img;
     }
 
     @Transactional
@@ -231,7 +247,7 @@ public class EquipmentService {
                         .ownerName("PrecisionAg Solutions")
                         .ownerPhone("+91 99014 66205")
                         .owner(defaultOwner)
-                        .imageUrl("https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=80")
+                        .imageUrl("https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&auto=format&fit=crop&q=80")
                         .description("High-precision dual slope laser transmitter and hydraulic drag scraper. Reduces irrigation water requirement by 35% and improves uniformity.")
                         .specsJson("{\"workingRange\":\"800 meters\",\"accuracy\":\"±1.5 mm per 30m\",\"bladeWidth\":\"2.1 meters\",\"controlSystem\":\"Hydraulic Proportional\"}")
                         .rating(4.8)
@@ -351,16 +367,33 @@ public class EquipmentService {
         log.info("Farm Equipment Catalog seeded successfully with 8 premium machinery items and 2 bookings.");
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<EquipmentDTO.EquipmentItemDto> getAllEquipment(
             String category,
             Double userLat,
             Double userLng,
             Double maxDistanceKm,
-            String search
+            String search,
+            String location
     ) {
-        double originLat = userLat != null ? userLat : DEFAULT_LAT;
-        double originLng = userLng != null ? userLng : DEFAULT_LNG;
+        // First, ensure all legacy database images are sanitized
+        fixOutdatedCatalogImages();
+
+        boolean isBirmingham = (location != null && location.toLowerCase().contains("birmingham"))
+                || (userLat != null && userLat > 50.0 && userLat < 55.0 && userLng != null && userLng > -4.0 && userLng < 0.0);
+
+        double originLat;
+        double originLng;
+        if (userLat != null && userLng != null) {
+            originLat = userLat;
+            originLng = userLng;
+        } else if (isBirmingham) {
+            originLat = 52.4862;
+            originLng = -1.8904;
+        } else {
+            originLat = DEFAULT_LAT;
+            originLng = DEFAULT_LNG;
+        }
 
         List<EquipmentEntity> list = equipmentRepository.findAll();
 
@@ -381,16 +414,29 @@ public class EquipmentService {
                     return true;
                 })
                 .map(eq -> {
+                    EquipmentEntity mappedEq = isBirmingham ? mapToBirminghamRegionalHub(eq) : eq;
                     double dist = calculateHaversineKm(
                             originLat, originLng,
-                            eq.getLatitude() != null ? eq.getLatitude() : DEFAULT_LAT,
-                            eq.getLongitude() != null ? eq.getLongitude() : DEFAULT_LNG
+                            mappedEq.getLatitude() != null ? mappedEq.getLatitude() : originLat,
+                            mappedEq.getLongitude() != null ? mappedEq.getLongitude() : originLng
                     );
-                    return toItemDto(eq, dist);
+                    return toItemDto(mappedEq, dist);
                 })
                 .filter(dto -> maxDistanceKm == null || dto.getDistanceKm() <= maxDistanceKm)
                 .sorted((a, b) -> Double.compare(a.getDistanceKm(), b.getDistanceKm()))
                 .collect(Collectors.toList());
+    }
+
+    // Overload for backwards compatibility
+    @Transactional(readOnly = true)
+    public List<EquipmentDTO.EquipmentItemDto> getAllEquipment(
+            String category,
+            Double userLat,
+            Double userLng,
+            Double maxDistanceKm,
+            String search
+    ) {
+        return getAllEquipment(category, userLat, userLng, maxDistanceKm, search, null);
     }
 
     @Transactional(readOnly = true)
@@ -398,15 +444,112 @@ public class EquipmentService {
         EquipmentEntity eq = equipmentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Equipment not found with ID: " + id));
 
-        double originLat = userLat != null ? userLat : DEFAULT_LAT;
-        double originLng = userLng != null ? userLng : DEFAULT_LNG;
+        boolean isBirmingham = userLat != null && userLat > 50.0 && userLat < 55.0;
+        double originLat = userLat != null ? userLat : (isBirmingham ? 52.4862 : DEFAULT_LAT);
+        double originLng = userLng != null ? userLng : (isBirmingham ? -1.8904 : DEFAULT_LNG);
+
+        EquipmentEntity mappedEq = isBirmingham ? mapToBirminghamRegionalHub(eq) : eq;
         double dist = calculateHaversineKm(
                 originLat, originLng,
-                eq.getLatitude() != null ? eq.getLatitude() : DEFAULT_LAT,
-                eq.getLongitude() != null ? eq.getLongitude() : DEFAULT_LNG
+                mappedEq.getLatitude() != null ? mappedEq.getLatitude() : originLat,
+                mappedEq.getLongitude() != null ? mappedEq.getLongitude() : originLng
         );
 
-        return toItemDto(eq, dist);
+        return toItemDto(mappedEq, dist);
+    }
+
+    private EquipmentEntity mapToBirminghamRegionalHub(EquipmentEntity eq) {
+        String cat = eq.getCategory() != null ? eq.getCategory().toUpperCase() : "";
+        String name = eq.getName() != null ? eq.getName() : "";
+
+        String hubLocation;
+        double hubLat;
+        double hubLng;
+        String hubOwner;
+        String hubPhone;
+
+        if (cat.contains("TRACTOR") && name.contains("John Deere")) {
+            hubLocation = "Sutton Coldfield Machinery Depot, Birmingham";
+            hubLat = 52.5704;
+            hubLng = -1.8240;
+            hubOwner = "Midlands Farm Machinery Hire";
+            hubPhone = "+44 121 354 8821";
+        } else if (cat.contains("TRACTOR")) {
+            hubLocation = "Solihull Agricultural Depot, West Midlands";
+            hubLat = 52.4128;
+            hubLng = -1.7782;
+            hubOwner = "West Midlands Machinery Co-op (CHC)";
+            hubPhone = "+44 121 496 0192";
+        } else if (cat.contains("HARVESTER")) {
+            hubLocation = "Coleshill CHC Farm Machinery Hub, Warwickshire";
+            hubLat = 52.4985;
+            hubLng = -1.7062;
+            hubOwner = "Warwickshire Grain & Harvest Contracting";
+            hubPhone = "+44 1675 463 990";
+        } else if (cat.contains("DRONE")) {
+            hubLocation = "Warwickshire Precision Agri-Drone Hub, Kenilworth";
+            hubLat = 52.3421;
+            hubLng = -1.5833;
+            hubOwner = "AeroCrop Precision Ag Services UK";
+            hubPhone = "+44 1926 852 114";
+        } else if (cat.contains("ROTAVATOR")) {
+            hubLocation = "Dudley & Stourbridge Tractor Implements, West Midlands";
+            hubLat = 52.5123;
+            hubLng = -2.0811;
+            hubOwner = "Black Country Farm Implement Depot";
+            hubPhone = "+44 1384 241 550";
+        } else if (cat.contains("LEVELER")) {
+            hubLocation = "Tamworth Farm Mechanization Center, Staffordshire";
+            hubLat = 52.6340;
+            hubLng = -1.6959;
+            hubOwner = "Staffordshire Field Precision Drainage Ltd";
+            hubPhone = "+44 1827 709 332";
+        } else if (cat.contains("PUMP")) {
+            hubLocation = "Bromsgrove Farm Irrigation & Pump Station, Worcestershire";
+            hubLat = 52.3353;
+            hubLng = -2.0579;
+            hubOwner = "Worcestershire Agricultural Irrigation Hub";
+            hubPhone = "+44 1527 874 120";
+        } else if (cat.contains("BALER")) {
+            hubLocation = "Lichfield Straw & Forage Equipment Center, Staffordshire";
+            hubLat = 52.6835;
+            hubLng = -1.8262;
+            hubOwner = "Mercia Straw & Forage Hire";
+            hubPhone = "+44 1543 410 788";
+        } else {
+            hubLocation = "West Midlands Central Agricultural Depot, Birmingham";
+            hubLat = 52.4862;
+            hubLng = -1.8904;
+            hubOwner = "Birmingham CHC Machinery Center";
+            hubPhone = "+44 121 200 4000";
+        }
+
+        return EquipmentEntity.builder()
+                .id(eq.getId())
+                .name(eq.getName())
+                .category(eq.getCategory())
+                .brand(eq.getBrand())
+                .horsepower(eq.getHorsepower())
+                .fuelType(eq.getFuelType())
+                .hourlyRate(eq.getHourlyRate())
+                .dailyRate(eq.getDailyRate())
+                .securityDeposit(eq.getSecurityDeposit())
+                .operatorIncluded(eq.getOperatorIncluded())
+                .conditionStatus(eq.getConditionStatus())
+                .status(eq.getStatus())
+                .locationName(hubLocation)
+                .latitude(hubLat)
+                .longitude(hubLng)
+                .ownerName(hubOwner)
+                .ownerPhone(hubPhone)
+                .owner(eq.getOwner())
+                .imageUrl(sanitizeImage(eq.getImageUrl(), eq.getCategory(), eq.getName()))
+                .description(eq.getDescription())
+                .specsJson(eq.getSpecsJson())
+                .rating(eq.getRating())
+                .totalRentalsCount(eq.getTotalRentalsCount())
+                .createdAt(eq.getCreatedAt())
+                .build();
     }
 
     @Transactional
@@ -552,6 +695,7 @@ public class EquipmentService {
     }
 
     private EquipmentDTO.EquipmentItemDto toItemDto(EquipmentEntity eq, double distanceKm) {
+        String cleanImg = sanitizeImage(eq.getImageUrl(), eq.getCategory(), eq.getName());
         return EquipmentDTO.EquipmentItemDto.builder()
                 .id(eq.getId())
                 .name(eq.getName())
@@ -572,7 +716,7 @@ public class EquipmentService {
                 .ownerName(eq.getOwnerName())
                 .ownerPhone(eq.getOwnerPhone())
                 .ownerId(eq.getOwner() != null ? eq.getOwner().getId() : null)
-                .imageUrl(eq.getImageUrl())
+                .imageUrl(cleanImg)
                 .description(eq.getDescription())
                 .specsJson(eq.getSpecsJson())
                 .rating(eq.getRating())
@@ -582,15 +726,17 @@ public class EquipmentService {
     }
 
     private EquipmentDTO.BookingDto toBookingDto(EquipmentBookingEntity b) {
+        EquipmentEntity eq = b.getEquipment();
+        String cleanImg = eq != null ? sanitizeImage(eq.getImageUrl(), eq.getCategory(), eq.getName()) : "";
         return EquipmentDTO.BookingDto.builder()
                 .id(b.getId())
                 .bookingReference(b.getBookingReference())
-                .equipmentId(b.getEquipment().getId())
-                .equipmentName(b.getEquipment().getName())
-                .equipmentCategory(b.getEquipment().getCategory())
-                .equipmentBrand(b.getEquipment().getBrand())
-                .equipmentImageUrl(b.getEquipment().getImageUrl())
-                .equipmentLocation(b.getEquipment().getLocationName())
+                .equipmentId(eq != null ? eq.getId() : null)
+                .equipmentName(eq != null ? eq.getName() : "")
+                .equipmentCategory(eq != null ? eq.getCategory() : "")
+                .equipmentBrand(eq != null ? eq.getBrand() : "")
+                .equipmentImageUrl(cleanImg)
+                .equipmentLocation(eq != null ? eq.getLocationName() : "")
                 .renterId(b.getRenter() != null ? b.getRenter().getId() : null)
                 .renterName(b.getRenterName())
                 .renterPhone(b.getRenterPhone())
@@ -608,8 +754,8 @@ public class EquipmentService {
                 .bookedAt(b.getBookedAt())
                 .reviewedAt(b.getReviewedAt())
                 .ownerNotes(b.getOwnerNotes())
-                .ownerName(b.getEquipment().getOwnerName())
-                .ownerPhone(b.getEquipment().getOwnerPhone())
+                .ownerName(eq != null ? eq.getOwnerName() : "")
+                .ownerPhone(eq != null ? eq.getOwnerPhone() : "")
                 .build();
     }
 }

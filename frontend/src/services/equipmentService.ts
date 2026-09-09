@@ -13,6 +13,7 @@ export const equipmentService = {
     lng?: number;
     maxDistanceKm?: number;
     search?: string;
+    location?: string;
   }): Promise<EquipmentItem[]> => {
     const { data } = await api.get<EquipmentItem[]>('/equipment', { params });
     return data;

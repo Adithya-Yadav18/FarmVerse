@@ -25,9 +25,10 @@ public class EquipmentController {
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
             @RequestParam(required = false) Double maxDistanceKm,
-            @RequestParam(required = false) String search
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String location
     ) {
-        return ResponseEntity.ok(equipmentService.getAllEquipment(category, lat, lng, maxDistanceKm, search));
+        return ResponseEntity.ok(equipmentService.getAllEquipment(category, lat, lng, maxDistanceKm, search, location));
     }
 
     @GetMapping("/{id}")
