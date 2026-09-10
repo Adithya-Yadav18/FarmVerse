@@ -85,7 +85,13 @@ export default function CropRescuePage() {
       setShowSosModal(false);
       await loadData();
       setActiveTicket(created);
-      alert(`Emergency Distress Beacon Activated! Ticket Reference: ${created.ticketCode}`);
+      if ((created as any).offlineQueued) {
+        alert(
+          'Offline Mode: SOS Distress Beacon saved safely in phone storage!\nIt will automatically dispatch to local KVK agronomists once cellular signal returns.'
+        );
+      } else {
+        alert(`Emergency Distress Beacon Activated! Ticket Reference: ${created.ticketCode}`);
+      }
     } catch (err) {
       console.error('Failed to trigger SOS:', err);
       alert('Could not trigger rescue beacon. Please check details and try again.');

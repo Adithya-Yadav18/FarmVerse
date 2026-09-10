@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { getToken, getRefreshToken, setToken, removeToken, removeRefreshToken, removeStoredUser } from '../utils';
 import env from '../config/env';
+import syncQueueDb, { type SyncCategory } from '../offline/syncQueueDb';
 
 const api = axios.create({
   baseURL: env.API_BASE_URL,
@@ -8,16 +9,140 @@ const api = axios.create({
   timeout: 15000,
 });
 
-// ─── Request Interceptor: attach JWT ─────────────────────────────────────────
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+/**
+ * Handles offline interception for mutative field operations.
+ * Saves to IndexedDB and synthesizes an optimistic offline response.
+ */
+const handleOfflineAction = async (config: InternalAxiosRequestConfig): Promise<any> => {
+  const url = config.url || '';
+  const method = (config.method || 'POST').toUpperCase() as any;
+  let category: SyncCategory = 'GENERAL';
+  let title = 'Field Activity Update';
+
+  let data = config.data;
+  if (typeof data === 'string') {
+    try {
+      data = JSON.parse(data);
+    } catch (_) {}
+  }
+
+  if (url.includes('/rescue/sos')) {
+    category = 'SOS_RESCUE';
+    title = `SOS Emergency: ${data?.cropName || 'Crop Alert'} (${data?.affectedAcres || '1'} Acres)`;
+  } else if (url.includes('/equipment') && url.includes('/book')) {
+    category = 'EQUIPMENT_BOOKING';
+    title = `Equipment Reservation (${data?.durationUnits || 1} ${data?.rentalType || 'Days'})`;
+  } else if (url.includes('/equipment') && method === 'POST') {
+    category = 'EQUIPMENT_BOOKING';
+    title = `Equipment Listing: ${data?.name || 'Machinery'}`;
+  } else if (url.includes('/farms')) {
+    category = 'FARM_LOG';
+    title = `Farm Record: ${data?.name || 'Field Details'}`;
+  } else if (url.includes('/crops')) {
+    category = 'FARM_LOG';
+    title = `Crop Telemetry: ${data?.name || 'Crop Stage'}`;
+  } else {
+    return null;
+  }
+
+  const queued = await syncQueueDb.enqueueAction({
+    category,
+    title,
+    url,
+    method,
+    payload: data,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  // Synthesize optimistic response so UI confirms without error
+  let responseData: any = {
+    offlineQueued: true,
+    syncId: queued.id,
+    status: 'QUEUED_OFFLINE',
+    message: 'Action saved locally in device storage and will sync once connected.',
+  };
+
+  if (category === 'SOS_RESCUE') {
+    responseData = {
+      id: Date.now(),
+      ticketCode: 'SOS-OFFLINE-' + Math.floor(1000 + Math.random() * 9000),
+      cropName: data?.cropName || 'Sugarcane',
+      emergencyType: data?.emergencyType || 'EMERGENCY',
+      severityLevel: data?.severityLevel || 'CRITICAL_IMMEDIATE',
+      affectedAcres: data?.affectedAcres || 1,
+      cropGrowthStage: data?.cropGrowthStage || 'Active Growth',
+      symptomsDescription: data?.symptomsDescription || '',
+      farmerName: data?.farmerName || 'Farmer',
+      farmerPhone: data?.farmerPhone || '',
+      status: 'QUEUED_OFFLINE',
+      offlineQueued: true,
+      createdAt: new Date().toISOString(),
+      actionChecklist: [
+        'Ticket securely stored in device IndexedDB.',
+        'Antidote advice cached on device.',
+        'Automatic dispatch queued for network reconnection.',
+      ],
+    };
+  } else if (category === 'EQUIPMENT_BOOKING') {
+    responseData = {
+      id: Date.now(),
+      bookingReference: 'EQB-OFFLINE-' + Math.floor(1000 + Math.random() * 9000),
+      equipmentId: data?.equipmentId || 1,
+      equipmentName: 'Machinery (Offline Queued)',
+      renterName: data?.renterName || 'Farmer',
+      renterPhone: data?.renterPhone || '',
+      deliveryAddress: data?.deliveryAddress || 'Farm',
+      startDate: data?.startDate || new Date().toISOString().split('T')[0],
+      endDate: data?.endDate || new Date().toISOString().split('T')[0],
+      durationUnits: data?.durationUnits || 1,
+      rentalType: data?.rentalType || 'DAILY',
+      totalRentalAmount: 0,
+      securityDeposit: 0,
+      status: 'QUEUED_OFFLINE',
+      offlineQueued: true,
+      bookedAt: new Date().toISOString(),
+    };
+  }
+
+  // Notify listeners that a new offline action was queued
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('farmverse:offline-action-queued', { detail: queued }));
+  }
+
+  return {
+    data: responseData,
+    status: 200,
+    statusText: 'OK (Offline Queued)',
+    headers: {},
+    config,
+  };
+};
+
+// ─── Request Interceptor: attach JWT + check offline ─────────────────────────
+api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const token = getToken();
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // If device is explicitly offline and trying to perform a mutable action, queue locally
+  if (
+    typeof navigator !== 'undefined' &&
+    !navigator.onLine &&
+    config.method &&
+    ['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method.toUpperCase())
+  ) {
+    const offlineRes = await handleOfflineAction(config);
+    if (offlineRes) {
+      // Create a cancelled request adapter that resolves with the offline synthetic response
+      config.adapter = () => Promise.resolve(offlineRes);
+    }
+  }
+
   return config;
 });
 
-// ─── Response Interceptor: handle 401 + refresh ──────────────────────────────
+// ─── Response Interceptor: handle 401 + refresh + network failure fallback ─────
 let isRefreshing = false;
 let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = [];
 
@@ -33,6 +158,19 @@ api.interceptors.response.use(
   res => res,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    // Check if network completely dropped during transmission on a mutative request
+    if (
+      !error.response &&
+      originalRequest &&
+      originalRequest.method &&
+      ['POST', 'PUT', 'DELETE', 'PATCH'].includes(originalRequest.method.toUpperCase())
+    ) {
+      const offlineRes = await handleOfflineAction(originalRequest);
+      if (offlineRes) {
+        return Promise.resolve(offlineRes);
+      }
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {

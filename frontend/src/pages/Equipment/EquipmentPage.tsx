@@ -829,10 +829,30 @@ export default function EquipmentPage() {
 
             {bookingSuccess ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <div style={{ fontSize: 50, color: '#2e7d32', marginBottom: 12 }}>🎉</div>
-                <h3 style={{ margin: '0 0 8px 0', color: '#1b4332' }}>Booking Confirmed!</h3>
-                <p style={{ color: '#4b6658', fontSize: 14 }}>
-                  Reference Number: <strong>{bookingSuccess.bookingReference}</strong>
+                <div
+                  style={{
+                    fontSize: 50,
+                    color: (bookingSuccess as any).offlineQueued ? '#d97706' : '#2e7d32',
+                    marginBottom: 12,
+                  }}
+                >
+                  {(bookingSuccess as any).offlineQueued ? '📦' : '🎉'}
+                </div>
+                <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>
+                  {(bookingSuccess as any).offlineQueued ? 'Offline Reservation Saved!' : 'Booking Confirmed!'}
+                </h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.5 }}>
+                  {(bookingSuccess as any).offlineQueued ? (
+                    <span>
+                      Saved safely in phone storage (Offline Mode).<br />
+                      Queue Reference: <strong>{bookingSuccess.bookingReference}</strong>.<br />
+                      Will automatically sync and confirm with the machinery hub once connected.
+                    </span>
+                  ) : (
+                    <span>
+                      Reference Number: <strong>{bookingSuccess.bookingReference}</strong>
+                    </span>
+                  )}
                 </p>
                 <div className={styles.costBreakdown}>
                   <div className={styles.costRow}>
