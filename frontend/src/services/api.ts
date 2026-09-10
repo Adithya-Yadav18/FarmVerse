@@ -26,9 +26,17 @@ const handleOfflineAction = async (config: InternalAxiosRequestConfig): Promise<
     } catch (_) {}
   }
 
+  // Do not queue authentication requests offline (requires live credential validation)
+  if (url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/refresh')) {
+    return null;
+  }
+
   if (url.includes('/rescue/sos')) {
     category = 'SOS_RESCUE';
     title = `SOS Emergency: ${data?.cropName || 'Crop Alert'} (${data?.affectedAcres || '1'} Acres)`;
+  } else if (url.includes('/disease')) {
+    category = 'SOS_RESCUE';
+    title = `Crop Pathology Check: ${data?.cropName || data?.crop || 'Crop Diagnosis'}`;
   } else if (url.includes('/equipment') && url.includes('/book')) {
     category = 'EQUIPMENT_BOOKING';
     title = `Equipment Reservation (${data?.durationUnits || 1} ${data?.rentalType || 'Days'})`;
@@ -37,12 +45,28 @@ const handleOfflineAction = async (config: InternalAxiosRequestConfig): Promise<
     title = `Equipment Listing: ${data?.name || 'Machinery'}`;
   } else if (url.includes('/farms')) {
     category = 'FARM_LOG';
-    title = `Farm Record: ${data?.name || 'Field Details'}`;
+    title = `Farm Plot: ${data?.name || data?.location || 'Field Record'}`;
   } else if (url.includes('/crops')) {
     category = 'FARM_LOG';
-    title = `Crop Telemetry: ${data?.name || 'Crop Stage'}`;
+    title = `Crop Telemetry: ${data?.name || data?.stage || 'Crop Stage'}`;
+  } else if (url.includes('/soil')) {
+    category = 'FARM_LOG';
+    title = `Soil Log: ${data?.soilType || data?.fieldName || 'Soil Analysis'}`;
+  } else if (url.includes('/irrigation')) {
+    category = 'FARM_LOG';
+    title = `Irrigation Schedule: ${data?.zone || data?.crop || 'Watering Record'}`;
+  } else if (url.includes('/traceability')) {
+    category = 'GENERAL';
+    title = `Traceability Batch: ${data?.batchNumber || data?.cropName || 'Batch Log'}`;
+  } else if (url.includes('/credit') || url.includes('/carbon')) {
+    category = 'GENERAL';
+    title = `Agri-Finance / Carbon Log: ${data?.schemeName || data?.project || 'Application'}`;
   } else {
-    return null;
+    // Universal catch-all for ANY farmer mutative activity while offline
+    category = 'GENERAL';
+    const cleanPath = url.replace(/^\/api\/?/, '').split('?')[0];
+    const formattedPath = cleanPath ? cleanPath.charAt(0).toUpperCase() + cleanPath.slice(1).replace('/', ' - ') : 'Activity';
+    title = `Field Activity: ${formattedPath} (${method})`;
   }
 
   const queued = await syncQueueDb.enqueueAction({
@@ -56,10 +80,12 @@ const handleOfflineAction = async (config: InternalAxiosRequestConfig): Promise<
 
   // Synthesize optimistic response so UI confirms without error
   let responseData: any = {
+    id: Date.now(),
     offlineQueued: true,
     syncId: queued.id,
     status: 'QUEUED_OFFLINE',
     message: 'Action saved locally in device storage and will sync once connected.',
+    ...(typeof data === 'object' && data !== null ? data : {}),
   };
 
   if (category === 'SOS_RESCUE') {

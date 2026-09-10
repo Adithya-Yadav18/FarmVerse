@@ -62,13 +62,14 @@ export default function SyncQueueDrawer() {
               });
               const isSOS = item.category === 'SOS_RESCUE';
               const isEquip = item.category === 'EQUIPMENT_BOOKING';
+              const isFarm = item.category === 'FARM_LOG';
 
               return (
                 <div key={item.id} className={styles.itemCard}>
                   <div className={styles.itemTop}>
                     <span
                       className={`${styles.categoryTag} ${
-                        isSOS ? styles.catSOS : isEquip ? styles.catEQUIPMENT : styles.catFARM
+                        isSOS ? styles.catSOS : isEquip ? styles.catEQUIPMENT : isFarm ? styles.catFARM : styles.catGENERAL
                       }`}
                     >
                       {item.category.replace('_', ' ')}
