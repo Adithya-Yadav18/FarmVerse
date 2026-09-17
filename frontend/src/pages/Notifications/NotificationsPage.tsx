@@ -28,10 +28,13 @@ const TYPE_ICON: Record<NotificationSeverity, React.ReactNode> = {
   info: <MdInfo />,
 };
 
+import { useAuth } from '../../context/AuthContext';
+
 type FilterType = 'all' | 'unread' | NotificationCategory;
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const {
     notifications,
     unreadCount,
@@ -41,6 +44,11 @@ export default function NotificationsPage() {
     removeNotification,
     refreshNotifications
   } = useNotifications();
+
+  // Role detection
+  const rawRole = (user?.role || 'Farmer').toLowerCase();
+  const isNormalUser = rawRole.includes('normal') || rawRole.includes('user') || rawRole === 'consumer';
+  const isAgronomist = rawRole.includes('agronomist');
 
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
@@ -66,9 +74,31 @@ export default function NotificationsPage() {
 
   const handleNotificationClick = async (id: string, link?: string) => {
     await markAsRead(id);
-    if (link) {
-      navigate(link);
+    if (!link) return;
+
+    // RBAC Route Safety Guard
+    const forbiddenForNormalUser = [
+      '/farms', '/crops', '/soil', '/irrigation', '/satellite',
+      '/simulator', '/disease', '/reports', '/crop-rescue',
+      '/equipment', '/credit-scoring', '/carbon', '/admin/users'
+    ];
+    const forbiddenForAgronomist = ['/equipment', '/credit-scoring', '/carbon', '/admin/users'];
+
+    if (isNormalUser && forbiddenForNormalUser.some(f => link.startsWith(f))) {
+      toast('This notification relates to farm-level telemetry accessible to registered producers.', {
+        icon: 'ℹ️',
+      });
+      return;
     }
+
+    if (isAgronomist && forbiddenForAgronomist.some(f => link.startsWith(f))) {
+      toast('Commercial equipment & financial modules are restricted to farm operators.', {
+        icon: 'ℹ️',
+      });
+      return;
+    }
+
+    navigate(link);
   };
 
   const filtered = notifications.filter(n => {
@@ -77,15 +107,38 @@ export default function NotificationsPage() {
     return n.category === activeFilter;
   });
 
-  const categories: { key: FilterType; label: string }[] = [
-    { key: 'all', label: `All (${notifications.length})` },
-    { key: 'unread', label: `Unread (${unreadCount})` },
-    { key: 'DISEASE', label: 'Disease Alerts' },
-    { key: 'SOIL', label: 'Soil & Sensors' },
-    { key: 'IRRIGATION', label: 'Irrigation' },
-    { key: 'WEATHER', label: 'Weather' },
-    { key: 'PRESCRIPTION', label: 'Prescriptions' },
-  ];
+  // Dynamic role-tailored categories
+  const categories: { key: FilterType; label: string }[] = isNormalUser
+    ? [
+        { key: 'all', label: `All (${notifications.length})` },
+        { key: 'unread', label: `Unread (${unreadCount})` },
+        { key: 'MARKET', label: 'Mandi Market Rates' },
+        { key: 'TRACEABILITY', label: 'Food Safety & QR' },
+        { key: 'WEATHER', label: 'Weather Forecast' },
+        { key: 'ADVISORY', label: 'AI Advisory' },
+        { key: 'SYSTEM', label: 'System' },
+      ]
+    : isAgronomist
+    ? [
+        { key: 'all', label: `All (${notifications.length})` },
+        { key: 'unread', label: `Unread (${unreadCount})` },
+        { key: 'DISEASE', label: 'Disease Alerts' },
+        { key: 'SOIL', label: 'Soil Health' },
+        { key: 'SATELLITE', label: 'Satellite NDVI' },
+        { key: 'RESCUE', label: 'Crop SOS Triage' },
+        { key: 'WEATHER', label: 'Agro-Weather' },
+        { key: 'ADVISORY', label: 'AI Advisory' },
+      ]
+    : [
+        { key: 'all', label: `All (${notifications.length})` },
+        { key: 'unread', label: `Unread (${unreadCount})` },
+        { key: 'DISEASE', label: 'Disease Alerts' },
+        { key: 'SOIL', label: 'Soil & Sensors' },
+        { key: 'IRRIGATION', label: 'Smart Irrigation' },
+        { key: 'WEATHER', label: 'Weather' },
+        { key: 'MARKET', label: 'Mandi Rates' },
+        { key: 'PRESCRIPTION', label: 'Prescriptions' },
+      ];
 
   return (
     <div>
@@ -114,6 +167,47 @@ export default function NotificationsPage() {
           </div>
         }
       />
+
+      {/* Role-Specific Alert Banner */}
+      {isNormalUser && (
+        <div style={{
+          background: 'rgba(59, 130, 246, 0.08)',
+          border: '1px solid rgba(59, 130, 246, 0.25)',
+          borderRadius: 8,
+          padding: '10px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          fontSize: 13,
+          color: 'var(--text-secondary)'
+        }}>
+          <span style={{ fontSize: 16 }}>🛒</span>
+          <span>
+            <strong>Consumer Market & Produce Feed:</strong> Showing real-time APMC price alerts, certified organic harvest clearances, and nutritional recommendations tailored for household consumers.
+          </span>
+        </div>
+      )}
+
+      {isAgronomist && (
+        <div style={{
+          background: 'rgba(16, 185, 129, 0.08)',
+          border: '1px solid rgba(16, 185, 129, 0.25)',
+          borderRadius: 8,
+          padding: '10px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          fontSize: 13,
+          color: 'var(--text-secondary)'
+        }}>
+          <span style={{ fontSize: 16 }}>🔬</span>
+          <span>
+            <strong>Agronomic Surveillance & Diagnostics Feed:</strong> Real-time pathogen alerts, soil nutrient deviations, satellite NDVI anomalies, and farmer emergency distress triage dossiers.
+          </span>
+        </div>
+      )}
 
       {/* Filter Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 22, overflowX: 'auto', paddingBottom: 6 }}>

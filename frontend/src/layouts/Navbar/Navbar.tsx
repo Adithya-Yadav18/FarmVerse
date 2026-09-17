@@ -115,7 +115,23 @@ export function Navbar({ collapsed, onMenuClick }: NavbarProps) {
                           onClick={() => {
                             markAsRead(n.id);
                             if (n.link) {
-                              navigate(n.link);
+                              const rawRole = (user?.role || 'Farmer').toLowerCase();
+                              const isNormalUser = rawRole.includes('normal') || rawRole.includes('user') || rawRole === 'consumer';
+                              const isAgronomist = rawRole.includes('agronomist');
+                              const forbiddenForNormalUser = [
+                                '/farms', '/crops', '/soil', '/irrigation', '/satellite',
+                                '/simulator', '/disease', '/reports', '/crop-rescue',
+                                '/equipment', '/credit-scoring', '/carbon', '/admin/users'
+                              ];
+                              const forbiddenForAgronomist = ['/equipment', '/credit-scoring', '/carbon', '/admin/users'];
+
+                              if (isNormalUser && forbiddenForNormalUser.some(f => n.link?.startsWith(f))) {
+                                navigate('/notifications');
+                              } else if (isAgronomist && forbiddenForAgronomist.some(f => n.link?.startsWith(f))) {
+                                navigate('/notifications');
+                              } else {
+                                navigate(n.link);
+                              }
                               setNotifOpen(false);
                             }
                           }}

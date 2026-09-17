@@ -35,12 +35,15 @@ export const TraceabilityPage: React.FC = () => {
 
   // Role detection from AuthContext (no artificial buttons)
   const rawRole = (user?.role || 'Farmer').toLowerCase();
+  const isNormalUser = rawRole.includes('normal') || rawRole.includes('user') || rawRole === 'consumer';
   const isAgronomist = rawRole.includes('agronomist');
   const isAdmin = rawRole.includes('admin');
   const canCertify = isAgronomist || isAdmin;
 
-  // Active view tab
-  const [activeTab, setActiveTab] = useState<'SCANNER' | 'BATCHES' | 'GENERATOR'>('SCANNER');
+  // Active view tab: Agronomists inspect batches ledger by default; consumers scan
+  const [activeTab, setActiveTab] = useState<'SCANNER' | 'BATCHES' | 'GENERATOR'>(
+    isAgronomist ? 'BATCHES' : 'SCANNER'
+  );
   const [batches, setBatches] = useState<ProduceBatch[]>([]);
   const [stats, setStats] = useState<TraceabilitySummaryStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -121,6 +124,7 @@ export const TraceabilityPage: React.FC = () => {
   };
 
   const loadFarmsAndCrops = async () => {
+    if (isNormalUser) return; // Consumers do not manage farms or crops
     try {
       const [farmsRes, cropsRes] = await Promise.allSettled([
         api.get('/farms'),
@@ -335,29 +339,36 @@ export const TraceabilityPage: React.FC = () => {
           </p>
         </div>
 
-        <div className={styles.headerActions}>
-          <button
-            className={`${styles.btnSm} ${styles.btnPrimary}`}
-            onClick={() => setActiveTab('GENERATOR')}
-          >
-            <MdAddCircleOutline /> Generate QR Batch
-          </button>
-        </div>
+        {!isNormalUser && (
+          <div className={styles.headerActions}>
+            <button
+              className={`${styles.btnSm} ${styles.btnPrimary}`}
+              onClick={() => setActiveTab('GENERATOR')}
+            >
+              <MdAddCircleOutline /> Generate QR Batch
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* ─── Real Authenticated User Status Bar (Replaces manual role buttons) ─── */}
+      {/* ─── Real Authenticated User Status Bar ─── */}
       <div className={styles.userStatusBar}>
         <div className={styles.userStatusLeft}>
           <div className={styles.userBadgeDot} />
           <span>
-            Connected as <strong>{user?.name || 'Authorized Producer'}</strong>
+            Connected as <strong>{user?.name || (isNormalUser ? 'Verified Consumer' : 'Authorized Producer')}</strong>
           </span>
           <span className={styles.badgeRole}>
-            {user?.role || 'Farmer'}
+            {isNormalUser ? 'Consumer / Public Buyer' : (user?.role || 'Farmer')}
           </span>
+          {isNormalUser && (
+            <span className={styles.badgeSpecial} style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#2563eb' }}>
+              <MdVerified style={{ verticalAlign: 'middle' }} /> Consumer Food Provenance Portal
+            </span>
+          )}
           {isAgronomist && (
             <span className={styles.badgeSpecial}>
-              <MdVerified style={{ verticalAlign: 'middle' }} /> Agronomist Inspector Mode Active
+              <MdVerified style={{ verticalAlign: 'middle' }} /> Senior Agronomist Inspector Mode Active
             </span>
           )}
           {isAdmin && (
@@ -373,6 +384,49 @@ export const TraceabilityPage: React.FC = () => {
         </div>
       </div>
 
+      {/* ─── Role-Specific Informative Banners ─── */}
+      {isNormalUser && (
+        <div style={{
+          background: 'rgba(59, 130, 246, 0.08)',
+          border: '1px solid rgba(59, 130, 246, 0.25)',
+          borderRadius: 10,
+          padding: '12px 18px',
+          marginBottom: 18,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          fontSize: 13,
+          color: 'var(--text-secondary)'
+        }}>
+          <span style={{ fontSize: 24 }}>🛒</span>
+          <div>
+            <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 2 }}>Consumer Food Provenance & Purity Verification:</strong>
+            Scan QR codes on packaging stickers or search lot codes to inspect authentic farm origins, harvest dates, natural farming practices, and pesticide-free certifications.
+          </div>
+        </div>
+      )}
+
+      {isAgronomist && (
+        <div style={{
+          background: 'rgba(16, 185, 129, 0.08)',
+          border: '1px solid rgba(16, 185, 129, 0.25)',
+          borderRadius: 10,
+          padding: '12px 18px',
+          marginBottom: 18,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          fontSize: 13,
+          color: 'var(--text-secondary)'
+        }}>
+          <span style={{ fontSize: 24 }}>🔬</span>
+          <div>
+            <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 2 }}>Agronomist Quality Assurance & Certification Desk:</strong>
+            You possess official authority to audit batch dossiers, issue certified quality seals (Grade A Green Seal / FSSAI Organic Benchmark), and enforce safety recall holds.
+          </div>
+        </div>
+      )}
+
       {/* ─── Mode Tabs ─── */}
       <div className={styles.tabGroup}>
         <button
@@ -387,12 +441,14 @@ export const TraceabilityPage: React.FC = () => {
         >
           <MdVerified /> Batches Ledger ({batches.length})
         </button>
-        <button
-          className={`${styles.tabBtn} ${activeTab === 'GENERATOR' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('GENERATOR')}
-        >
-          <MdAddCircleOutline /> QR Batch Generator & Sticker
-        </button>
+        {!isNormalUser && (
+          <button
+            className={`${styles.tabBtn} ${activeTab === 'GENERATOR' ? styles.activeTab : ''}`}
+            onClick={() => setActiveTab('GENERATOR')}
+          >
+            <MdAddCircleOutline /> QR Batch Generator & Sticker
+          </button>
+        )}
       </div>
 
       {/* ─── Stats KPI Row ─── */}
@@ -898,23 +954,25 @@ export const TraceabilityPage: React.FC = () => {
                   <td>
                     <div className={styles.actionsCell}>
                       <button
-                        className={`${styles.btnSm} ${styles.btnOutline}`}
-                        title="Print QR Sticker"
-                        onClick={() => {
-                          setActivePreviewBatch(batch);
-                          printSticker(batch);
-                        }}
-                      >
-                        <MdPrint />
-                      </button>
-
-                      <button
                         className={`${styles.btnSm} ${styles.btnPrimary}`}
-                        title="View Public Journey"
+                        title="View Complete Provenance Journey"
                         onClick={() => navigate(`/trace/${batch.batchCode}`)}
                       >
-                        <MdArrowForward /> View
+                        <MdArrowForward /> View Journey
                       </button>
+
+                      {!isNormalUser && (
+                        <button
+                          className={`${styles.btnSm} ${styles.btnOutline}`}
+                          title="Print QR Sticker"
+                          onClick={() => {
+                            setActivePreviewBatch(batch);
+                            printSticker(batch);
+                          }}
+                        >
+                          <MdPrint />
+                        </button>
+                      )}
 
                       {canCertify && !batch.agronomistCertified && (
                         <button

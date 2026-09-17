@@ -203,7 +203,20 @@ export interface CropRecommendation {
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 export type NotificationSeverity = 'info' | 'warning' | 'error' | 'success';
-export type NotificationCategory = 'DISEASE' | 'SOIL' | 'WEATHER' | 'IRRIGATION' | 'PRESCRIPTION' | 'SYSTEM';
+
+export type NotificationCategory =
+  | 'DISEASE'
+  | 'SOIL'
+  | 'WEATHER'
+  | 'IRRIGATION'
+  | 'PRESCRIPTION'
+  | 'SYSTEM'
+  | 'MARKET'
+  | 'TRACEABILITY'
+  | 'ADVISORY'
+  | 'SATELLITE'
+  | 'RESCUE'
+  | 'EQUIPMENT';
 
 export interface Notification {
   id: string;

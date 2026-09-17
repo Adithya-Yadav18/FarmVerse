@@ -6,7 +6,7 @@ import {
 import {
   MdStorefront, MdTrendingUp, MdTrendingDown, MdRefresh,
   MdCalculate, MdCompareArrows, MdVerified, MdInfo, MdSearch,
-  MdLocalShipping, MdShield, MdPriceCheck
+  MdLocalShipping, MdShield, MdPriceCheck, MdShoppingCart, MdSavings
 } from 'react-icons/md';
 import { toast } from 'react-hot-toast';
 
@@ -18,6 +18,7 @@ import { Skeleton } from '../../components/ui/Skeleton/Skeleton';
 
 import api from '../../services/api';
 import { mandiService } from '../../services/mandiService';
+import { useAuth } from '../../context/AuthContext';
 import type {
   Farm, MandiPrice, ArbitrageResponse, CommodityPriceHistory,
   MarketSummaryStats
@@ -26,7 +27,55 @@ import styles from './MandiPage.module.css';
 
 const CATEGORIES = ['All', 'Grains', 'Vegetables', 'Fruits', 'Cash Crops', 'Oilseeds', 'Spices'];
 
+const REFERENCE_FARMS: Farm[] = [
+  {
+    id: '1',
+    name: 'Blue Valley Farmstead (Mysore, Karnataka)',
+    location: 'Mysore, Karnataka',
+    area: 12.5,
+    areaUnit: 'hectares',
+    soilType: 'Red Loamy Soil',
+    status: 'Active',
+    ownerId: '1',
+    crops: ['Tomato', 'Paddy'],
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
+  },
+  {
+    id: '2',
+    name: 'Green Ridge Apple Orchard (Shimla, HP)',
+    location: 'Shimla, Himachal Pradesh',
+    area: 8.0,
+    areaUnit: 'hectares',
+    soilType: 'Mountain Loam',
+    status: 'Active',
+    ownerId: '1',
+    crops: ['Apple'],
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
+  },
+  {
+    id: '3',
+    name: 'Western Ghats Organics (Wayanad, Kerala)',
+    location: 'Wayanad, Kerala',
+    area: 15.2,
+    areaUnit: 'hectares',
+    soilType: 'Laterite Clay',
+    status: 'Active',
+    ownerId: '1',
+    crops: ['Black Pepper', 'Tea'],
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
+  },
+];
+
 export default function MandiPage() {
+  const { user } = useAuth();
+  const rawRole = (user?.role || 'Farmer').toLowerCase();
+  const isNormalUser = rawRole.includes('normal') || rawRole.includes('user') || rawRole === 'consumer';
+  const isAgronomist = rawRole.includes('agronomist');
+  const isAdmin = rawRole.includes('admin');
+
   // Farms state
   const [farms, setFarms] = useState<Farm[]>([]);
   const [selectedFarmId, setSelectedFarmId] = useState<number | null>(null);
@@ -47,19 +96,34 @@ export default function MandiPage() {
   const [arbitrageResult, setArbitrageResult] = useState<ArbitrageResponse | null>(null);
   const [isCalculatingArbitrage, setIsCalculatingArbitrage] = useState<boolean>(false);
 
-  // 1. Load Farms
+  // Consumer Grocery Budgeting State (For Normal Users)
+  const [groceryCommodity, setGroceryCommodity] = useState<string>('Tomato');
+  const [groceryKg, setGroceryKg] = useState<number>(5);
+
+  // 1. Load Farms with graceful fallback
   const loadFarms = useCallback(async () => {
+    if (isNormalUser) {
+      setFarms(REFERENCE_FARMS);
+      setSelectedFarmId(1);
+      return;
+    }
     try {
       const res = await api.get('/farms');
       const farmList: Farm[] = Array.isArray(res.data) ? res.data : (res.data?.data || []);
-      setFarms(farmList);
-      if (farmList.length > 0 && selectedFarmId === null) {
-        setSelectedFarmId(Number(farmList[0].id));
+      if (farmList.length > 0) {
+        setFarms(farmList);
+        if (selectedFarmId === null) {
+          setSelectedFarmId(Number(farmList[0].id));
+        }
+      } else {
+        setFarms(REFERENCE_FARMS);
+        setSelectedFarmId(1);
       }
     } catch {
-      // Graceful fallback
+      setFarms(REFERENCE_FARMS);
+      setSelectedFarmId(1);
     }
-  }, [selectedFarmId]);
+  }, [selectedFarmId, isNormalUser]);
 
   useEffect(() => {
     loadFarms();
@@ -107,14 +171,11 @@ export default function MandiPage() {
   // 4. Calculate Mandi Price Arbitrage
   const handleCalculateArbitrage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!selectedFarmId) {
-      toast.error('Please select a farm.');
-      return;
-    }
+    const effectiveFarmId = selectedFarmId || (farms.length > 0 ? Number(farms[0].id) : 1);
     setIsCalculatingArbitrage(true);
     try {
       const res = await mandiService.calculateArbitrage({
-        farmId: selectedFarmId,
+        farmId: effectiveFarmId,
         commodity: arbitrageCommodity,
         quantityQuintals: arbitrageQuantity,
       });
@@ -157,14 +218,16 @@ export default function MandiPage() {
         breadcrumbs={[{ label: 'e-NAM Market Prices' }]}
         actions={
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <Button
-              variant="outline"
-              leftIcon={<MdRefresh />}
-              loading={isSyncing}
-              onClick={handleAdminSync}
-            >
-              Sync e-NAM Feeds
-            </Button>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                leftIcon={<MdRefresh />}
+                loading={isSyncing}
+                onClick={handleAdminSync}
+              >
+                Sync e-NAM Feeds
+              </Button>
+            )}
             <Button
               variant="primary"
               leftIcon={<MdRefresh />}
@@ -175,6 +238,47 @@ export default function MandiPage() {
           </div>
         }
       />
+
+      {/* Role-Specific Mode Banners */}
+      {isNormalUser && (
+        <div style={{
+          background: 'rgba(59, 130, 246, 0.08)',
+          border: '1px solid rgba(59, 130, 246, 0.25)',
+          borderRadius: 10,
+          padding: '12px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          fontSize: 13,
+          color: 'var(--text-secondary)'
+        }}>
+          <span style={{ fontSize: 24 }}>🛒</span>
+          <div>
+            <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 2 }}>Consumer APMC Market Explorer:</strong>
+            Monitor live wholesale APMC mandi rates, fair retail grocery conversions, and Government MSP benchmarks to make smart, economical purchase decisions for your family.
+          </div>
+        </div>
+      )}
+
+      {isAgronomist && (
+        <div style={{
+          background: 'rgba(16, 185, 129, 0.08)',
+          border: '1px solid rgba(16, 185, 129, 0.25)',
+          borderRadius: 10,
+          padding: '12px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          fontSize: 13,
+          color: 'var(--text-secondary)'
+        }}>
+          <span style={{ fontSize: 24 }}>🌾</span>
+          <div>
+            <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 2 }}>Agronomic Market Intelligence & MSP Advisory Desk:</strong>
+            Evaluate farm gate price realizations against MSP benchmarks, counsel regional producers on market dispatch timing, and compute cross-mandi freight net margins.
+          </div>
+        </div>
+      )}
 
       {/* Live Market Price Ticker */}
       <div className={styles.tickerWrapper}>
@@ -196,16 +300,137 @@ export default function MandiPage() {
         </div>
       </div>
 
+      {/* Consumer Grocery & Retail Equivalency Calculator (Rendered for Normal Users) */}
+      {isNormalUser && (
+        <Card>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <h3 style={{ fontWeight: 800, fontSize: 18, color: 'var(--text-primary)', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <MdShoppingCart style={{ color: 'var(--color-emerald)', fontSize: 24 }} />
+                Consumer Grocery & Fair Retail Equivalency Guide
+              </h3>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+                Convert wholesale mandi quintal rates into everyday per-kilogram retail prices and calculate household grocery savings.
+              </p>
+            </div>
+            <Badge variant="success" dot>Fair Retail Model</Badge>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, background: 'var(--bg-secondary)', padding: 16, borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)', marginBottom: 16 }}>
+            <div className={styles.formGroup}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>Selected Produce</label>
+              <select
+                className={styles.selectInput}
+                value={groceryCommodity}
+                onChange={e => setGroceryCommodity(e.target.value)}
+              >
+                {['Tomato', 'Onion', 'Potato', 'Wheat', 'Apple', 'Paddy', 'Maize', 'Soybean'].map(crop => (
+                  <option key={crop} value={crop}>{crop}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>Household Purchase Quantity (Kg)</label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                className={styles.textInput}
+                value={groceryKg}
+                onChange={e => setGroceryKg(Math.max(1, Number(e.target.value)))}
+                placeholder="e.g. 5"
+              />
+            </div>
+
+            {(() => {
+              const activeGroceryItem = prices.find(p => p.commodity.toLowerCase() === groceryCommodity.toLowerCase()) || prices[0];
+              const wholesalePerKg = activeGroceryItem ? Math.round((activeGroceryItem.modalPrice / 100) * 10) / 10 : 22.0;
+              const fairRetailPerKg = Math.round((wholesalePerKg * 1.25) * 10) / 10;
+              const supermarketPerKg = Math.round((wholesalePerKg * 1.60) * 10) / 10;
+              const householdTotal = Math.round(fairRetailPerKg * groceryKg);
+              const supermarketTotal = Math.round(supermarketPerKg * groceryKg);
+              const consumerSavings = Math.max(0, supermarketTotal - householdTotal);
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>APMC Reference Mandi</span>
+                  <strong style={{ fontSize: 15, color: 'var(--text-primary)' }}>
+                    {activeGroceryItem ? activeGroceryItem.mandiName : 'National APMC Mandi'}
+                  </strong>
+                  <span style={{ fontSize: 12, color: 'var(--color-emerald)', fontWeight: 600 }}>
+                    ₹{activeGroceryItem?.modalPrice.toLocaleString('en-IN') || 2200}/quintal
+                  </span>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Consumer Price Breakdown Cards */}
+          {(() => {
+            const activeGroceryItem = prices.find(p => p.commodity.toLowerCase() === groceryCommodity.toLowerCase()) || prices[0];
+            const wholesalePerKg = activeGroceryItem ? Math.round((activeGroceryItem.modalPrice / 100) * 10) / 10 : 22.0;
+            const fairRetailPerKg = Math.round((wholesalePerKg * 1.25) * 10) / 10;
+            const supermarketPerKg = Math.round((wholesalePerKg * 1.60) * 10) / 10;
+            const householdTotal = Math.round(fairRetailPerKg * groceryKg);
+            const supermarketTotal = Math.round(supermarketPerKg * groceryKg);
+            const consumerSavings = Math.max(0, supermarketTotal - householdTotal);
+
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 8, padding: 14 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', fontWeight: 700, textTransform: 'uppercase' }}>Wholesale Mandi Base</span>
+                  <strong style={{ fontSize: 22, color: 'var(--text-primary)', display: 'block', marginTop: 4 }}>
+                    ₹{wholesalePerKg}/kg
+                  </strong>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Raw APMC Auction Rate</span>
+                </div>
+
+                <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 8, padding: 14 }}>
+                  <span style={{ fontSize: 11, color: 'var(--color-emerald)', display: 'block', fontWeight: 800, textTransform: 'uppercase' }}>Fair Retail Equivalent</span>
+                  <strong style={{ fontSize: 22, color: 'var(--color-emerald)', display: 'block', marginTop: 4 }}>
+                    ₹{fairRetailPerKg}/kg
+                  </strong>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Direct Farmers Market (+25%)</span>
+                </div>
+
+                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 8, padding: 14 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', fontWeight: 700, textTransform: 'uppercase' }}>Supermarket Shelf Price</span>
+                  <strong style={{ fontSize: 22, color: '#f59e0b', display: 'block', marginTop: 4 }}>
+                    ₹{supermarketPerKg}/kg
+                  </strong>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Retail Chain Markup (+60%)</span>
+                </div>
+
+                <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 8, padding: 14 }}>
+                  <span style={{ fontSize: 11, color: '#2563eb', display: 'block', fontWeight: 800, textTransform: 'uppercase' }}>Estimated Basket Cost</span>
+                  <strong style={{ fontSize: 22, color: '#2563eb', display: 'block', marginTop: 4 }}>
+                    ₹{householdTotal}
+                  </strong>
+                  <span style={{ fontSize: 11, color: 'var(--color-success)', fontWeight: 700 }}>
+                    Save ~₹{consumerSavings} vs Supermarket
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+        </Card>
+      )}
+
       {/* Mandi Price Arbitrage Calculator Widget */}
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
           <div>
             <h3 style={{ fontWeight: 800, fontSize: 18, color: 'var(--text-primary)', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <MdCompareArrows style={{ color: 'var(--color-emerald)', fontSize: 24 }} />
-              Mandi Price Arbitrage Calculator
+              {isNormalUser
+                ? 'Commercial Freight Arbitrage (Producer & Bulk Trader Reference)'
+                : 'Mandi Price Arbitrage Calculator (Net Producer Realisation)'}
             </h3>
             <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
-              Calculate net profit across mandis after deducting transport/freight costs per quintal.
+              {isNormalUser
+                ? 'Reference tool displaying how regional farmers optimize net payouts across APMC mandis after deducting freight logistics costs.'
+                : 'Calculate net profit across mandis after deducting transport/freight costs per quintal.'}
             </p>
           </div>
           <Badge variant="success" dot>Smart Freight Engine</Badge>
