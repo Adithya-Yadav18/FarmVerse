@@ -15,7 +15,6 @@
   gap: 16px;
   flex-wrap: wrap;
   box-shadow: 0 4px 16px rgba(16, 120, 80, 0.15);
-  animation: fadeIn 0.3s ease-in-out;
 }
 
 .pinBannerText {
@@ -29,6 +28,97 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Docked Field Boundary Editor directly on Map Card */
+.editorBar {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  z-index: 10;
+}
+
+.editorInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.editorTitle {
+  font-weight: 700;
+  color: #34D399;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.presetGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.presetLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94A3B8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 2px;
+}
+
+.presetBtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #E2E8F0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.presetBtn:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10B981;
+  color: #34D399;
+}
+
+.liveDrawBadge {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid #F59E0B;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #FBBF24;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: pulseGlow 1.5s infinite alternate;
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 6px rgba(245, 158, 11, 0.3); }
+  100% { box-shadow: 0 0 16px rgba(245, 158, 11, 0.7); }
 }
 
 .crosshairCursor {
@@ -36,12 +126,16 @@
 }
 
 .cornerMarker {
-  cursor: move !important;
+  cursor: grab !important;
   transition: transform 0.15s ease;
 }
 
+.cornerMarker:active {
+  cursor: grabbing !important;
+}
+
 .cornerMarker:hover {
-  transform: scale(1.3);
+  transform: scale(1.35);
 }
 
 .mapCard {
