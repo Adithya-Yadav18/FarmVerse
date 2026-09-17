@@ -36,6 +36,24 @@ L.Icon.Default.mergeOptions({
 });
 
 type MapLayerMode = 'optical' | 'ndvi' | 'ndwi' | 'grid';
+type SatelliteProviderKey = 'google' | 'esri';
+
+const TILE_PROVIDERS: Record<SatelliteProviderKey, { name: string; url: string; subdomains: string[]; maxZoom: number; attribution: string }> = {
+  google: {
+    name: 'Google HD Satellite',
+    url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    subdomains: ['0', '1', '2', '3'],
+    maxZoom: 20,
+    attribution: 'Tiles &copy; Google Maps Satellite',
+  },
+  esri: {
+    name: 'Esri World Imagery',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    subdomains: [''],
+    maxZoom: 19,
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, USDA, USGS, GeoEye',
+  },
+};
 
 export default function SatellitePage() {
   const { user } = useAuth();
@@ -65,6 +83,7 @@ export default function SatellitePage() {
 
   // Map Controls State
   const [layerMode, setLayerMode] = useState<MapLayerMode>('ndvi');
+  const [mapSource, setMapSource] = useState<SatelliteProviderKey>('google');
   const [overlayOpacity, setOverlayOpacity] = useState<number>(0.65);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRescanning, setIsRescanning] = useState<boolean>(false);
@@ -193,6 +212,14 @@ export default function SatellitePage() {
 
   // Quick Acreage Preset Applier (e.g. 1 Acre, 2.5 Acres, 5 Acres)
   const applyAcreagePreset = useCallback((targetAcres: number) => {
+    if (rubberBandRectRef.current) {
+      rubberBandRectRef.current.remove();
+      rubberBandRectRef.current = null;
+    }
+    setLiveHoverAcreage(null);
+    setIsDrawingNewBox(false);
+    setDrawStartLatLng(null);
+
     const centerLat = pinnedCoords?.lat || ndviData?.centerLat || 12.4180;
     const centerLng = pinnedCoords?.lng || ndviData?.centerLng || 76.6950;
 
@@ -218,6 +245,14 @@ export default function SatellitePage() {
   const applyFitToViewPreset = useCallback(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
+    if (rubberBandRectRef.current) {
+      rubberBandRectRef.current.remove();
+      rubberBandRectRef.current = null;
+    }
+    setLiveHoverAcreage(null);
+    setIsDrawingNewBox(false);
+    setDrawStartLatLng(null);
+
     const bounds = map.getBounds();
     const north = bounds.getNorth();
     const south = bounds.getSouth();
@@ -245,6 +280,14 @@ export default function SatellitePage() {
   // Reset Field to Farm Centroid
   const resetToFarmCentroid = useCallback(() => {
     if (!ndviData) return;
+    if (rubberBandRectRef.current) {
+      rubberBandRectRef.current.remove();
+      rubberBandRectRef.current = null;
+    }
+    setLiveHoverAcreage(null);
+    setIsDrawingNewBox(false);
+    setDrawStartLatLng(null);
+
     const centerLat = ndviData.centerLat;
     const centerLng = ndviData.centerLng;
     setPinnedCoords({ lat: centerLat, lng: centerLng });
@@ -264,13 +307,14 @@ export default function SatellitePage() {
         zoomControl: true,
       });
 
-      // Esri World Imagery (High-Resolution Global Satellite Photography - 100% Free)
-      const esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19,
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, USDA, USGS, GeoEye',
-        crossOrigin: 'anonymous',
+      // High-Resolution Global Satellite Imagery (Default: Google HD Hybrid, Fast Edge CDN)
+      const initialProvider = TILE_PROVIDERS.google;
+      const satelliteLayer = L.tileLayer(initialProvider.url, {
+        maxZoom: initialProvider.maxZoom,
+        subdomains: initialProvider.subdomains,
+        attribution: initialProvider.attribution,
       }).addTo(map);
-      tileLayerRef.current = esriLayer;
+      tileLayerRef.current = satelliteLayer;
 
       // Layer group for NDVI/NDWI Grid polygons, field block rectangle, and markers
       const layerGroup = L.layerGroup().addTo(map);
@@ -318,7 +362,7 @@ export default function SatellitePage() {
         if (isDrawingNewBoxRef.current) {
           if (!drawStartRef.current) {
             setDrawStartLatLng({ lat: e.latlng.lat, lng: e.latlng.lng });
-            toast('Corner 1 set! Move cursor and click the opposite corner to lock your field.', { icon: '📍' });
+            toast('Corner 1 set! Move cursor and click opposite corner to lock your field.', { icon: '📍' });
           } else {
             const start = drawStartRef.current;
             const north = Math.max(start.lat, e.latlng.lat);
@@ -379,23 +423,26 @@ export default function SatellitePage() {
     };
   }, []);
 
+  // Dynamically swap tile provider URL when user toggles Google HD / Esri World
+  useEffect(() => {
+    if (!tileLayerRef.current) return;
+    const provider = TILE_PROVIDERS[mapSource];
+    tileLayerRef.current.setUrl(provider.url);
+  }, [mapSource]);
+
   // Multi-pass size invalidation with pan: false to guarantee ZERO blanking
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const timers = [
       setTimeout(() => {
         mapInstanceRef.current?.invalidateSize({ pan: false });
-        tileLayerRef.current?.redraw();
       }, 50),
       setTimeout(() => {
         mapInstanceRef.current?.invalidateSize({ pan: false });
-      }, 200),
-      setTimeout(() => {
-        mapInstanceRef.current?.invalidateSize({ pan: false });
-      }, 500),
+      }, 250),
     ];
     return () => timers.forEach(clearTimeout);
-  }, [isPinMode, isDrawingNewBox, layerMode]);
+  }, [isPinMode, isDrawingNewBox, layerMode, mapSource]);
 
   // 4. Update Map Center, Overlays, Field Block Rectangle & Handles
   useEffect(() => {
@@ -414,9 +461,8 @@ export default function SatellitePage() {
     if (!isPinMode) {
       map.flyTo(center, 16, { duration: 1.2 });
     } else {
-      // In pin mode, explicitly maintain camera position and force satellite tile visibility
+      // In pin mode, explicitly maintain camera position
       map.setView(center, map.getZoom(), { animate: false });
-      tileLayerRef.current?.redraw();
     }
 
     // Clear previous overlays
@@ -430,8 +476,8 @@ export default function SatellitePage() {
       iconAnchor: [9, 9],
     });
 
-    // Render Farm Field Bounding Block
-    if (fieldBounds) {
+    // Render Farm Field Bounding Block (hidden while actively drawing a new box from scratch)
+    if (fieldBounds && !isDrawingNewBox) {
       const fieldRect = L.rectangle([[fieldBounds.south, fieldBounds.west], [fieldBounds.north, fieldBounds.east]], {
         color: isPinMode ? '#10B981' : '#22C55E',
         weight: isPinMode ? 3 : 2,
@@ -447,7 +493,7 @@ export default function SatellitePage() {
       );
 
       // In Pin/Edit mode: Render draggable Corner Handles
-      if (isPinMode) {
+      if (isPinMode && !isDrawingNewBox) {
         // NW Handle
         const handleNW = L.marker([fieldBounds.north, fieldBounds.west], {
           draggable: true,
@@ -495,50 +541,52 @@ export default function SatellitePage() {
     }
 
     // Center Farm Marker Pin
-    const marker = L.marker(center, {
-      draggable: isPinMode,
-    }).addTo(layerGroup);
-    markerRef.current = marker;
+    if (!isDrawingNewBox) {
+      const marker = L.marker(center, {
+        draggable: isPinMode,
+      }).addTo(layerGroup);
+      markerRef.current = marker;
 
-    if (isPinMode) {
-      // Use autoPan: false so Leaflet NEVER disrupts tile loading or shifts the camera
-      marker.bindPopup(`
-        <div style="font-family: sans-serif; min-width: 190px; color: #0f172a; padding: 4px;">
-          <h4 style="margin: 0 0 4px 0; color: #107850; font-size: 14px;">📍 Farm Field Centroid</h4>
-          <p style="margin: 0 0 6px 0; font-size: 12px; color: #475569;">Drag this center pin to shift your field, or drag the 4 corner handles to shape your exact field boundary.</p>
-          <div style="font-size: 11px; font-weight: 700; color: #16a34a;">Lat: ${currentLat.toFixed(5)}, Lng: ${currentLng.toFixed(5)}</div>
-        </div>
-      `, { autoPan: false, closeButton: false }).openPopup();
+      if (isPinMode) {
+        // Use autoPan: false so Leaflet NEVER disrupts tile loading or shifts the camera
+        marker.bindPopup(`
+          <div style="font-family: sans-serif; min-width: 190px; color: #0f172a; padding: 4px;">
+            <h4 style="margin: 0 0 4px 0; color: #107850; font-size: 14px;">📍 Farm Field Centroid</h4>
+            <p style="margin: 0 0 6px 0; font-size: 12px; color: #475569;">Drag this center pin to shift your field, or drag the 4 corner handles to shape your exact field boundary.</p>
+            <div style="font-size: 11px; font-weight: 700; color: #16a34a;">Lat: ${currentLat.toFixed(5)}, Lng: ${currentLng.toFixed(5)}</div>
+          </div>
+        `, { autoPan: false, closeButton: false }).openPopup();
 
-      marker.on('dragend', () => {
-        const pos = marker.getLatLng();
-        if (fieldBounds) {
-          const currentCenterLat = (fieldBounds.north + fieldBounds.south) / 2;
-          const currentCenterLng = (fieldBounds.east + fieldBounds.west) / 2;
-          const deltaLat = pos.lat - currentCenterLat;
-          const deltaLng = pos.lng - currentCenterLng;
-          setFieldBounds({
-            north: fieldBounds.north + deltaLat,
-            south: fieldBounds.south + deltaLat,
-            east: fieldBounds.east + deltaLng,
-            west: fieldBounds.west + deltaLng,
-          });
-        }
-        setPinnedCoords({ lat: pos.lat, lng: pos.lng });
-      });
-    } else {
-      marker.bindPopup(`
-        <div style="font-family: sans-serif; min-width: 180px; color: #0f172a; padding: 4px;">
-          <h4 style="margin: 0 0 4px 0; color: #107850; font-size: 14px;">🛰️ ${ndviData.farmName}</h4>
-          <p style="margin: 0 0 6px 0; font-size: 12px; color: #475569;">${ndviData.farmLocation || 'Field Centroid'}</p>
-          <div style="font-size: 12px; font-weight: 600;">Mean NDVI: <strong style="color: #16a34a;">${ndviData.meanNdvi}</strong> (${ndviData.canopyVigourRating})</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 4px;">GPS: ${currentLat.toFixed(5)}°, ${currentLng.toFixed(5)}°</div>
-        </div>
-      `);
+        marker.on('dragend', () => {
+          const pos = marker.getLatLng();
+          if (fieldBounds) {
+            const currentCenterLat = (fieldBounds.north + fieldBounds.south) / 2;
+            const currentCenterLng = (fieldBounds.east + fieldBounds.west) / 2;
+            const deltaLat = pos.lat - currentCenterLat;
+            const deltaLng = pos.lng - currentCenterLng;
+            setFieldBounds({
+              north: fieldBounds.north + deltaLat,
+              south: fieldBounds.south + deltaLat,
+              east: fieldBounds.east + deltaLng,
+              west: fieldBounds.west + deltaLng,
+            });
+          }
+          setPinnedCoords({ lat: pos.lat, lng: pos.lng });
+        });
+      } else {
+        marker.bindPopup(`
+          <div style="font-family: sans-serif; min-width: 180px; color: #0f172a; padding: 4px;">
+            <h4 style="margin: 0 0 4px 0; color: #107850; font-size: 14px;">🛰️ ${ndviData.farmName}</h4>
+            <p style="margin: 0 0 6px 0; font-size: 12px; color: #475569;">${ndviData.farmLocation || 'Field Centroid'}</p>
+            <div style="font-size: 12px; font-weight: 600;">Mean NDVI: <strong style="color: #16a34a;">${ndviData.meanNdvi}</strong> (${ndviData.canopyVigourRating})</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">GPS: ${currentLat.toFixed(5)}°, ${currentLng.toFixed(5)}°</div>
+          </div>
+        `);
+      }
     }
 
-    // If Optical mode is selected, only show pure satellite imagery
-    if (layerMode === 'optical') return;
+    // If Optical mode is selected or actively drawing new box, only show pure satellite imagery
+    if (layerMode === 'optical' || isDrawingNewBox) return;
 
     // Render 4x4 Grid Cells dynamically fitted inside fieldBounds
     if (ndviData.gridCells && ndviData.gridCells.length > 0 && fieldBounds) {
@@ -635,7 +683,6 @@ export default function SatellitePage() {
     setDrawStartLatLng(null);
     setTimeout(() => {
       mapInstanceRef.current?.invalidateSize({ pan: false });
-      tileLayerRef.current?.redraw();
     }, 50);
   };
 
@@ -913,7 +960,7 @@ export default function SatellitePage() {
             </div>
           )}
 
-          <div className={styles.mapWrapper}>
+          <div className={`${styles.mapWrapper} ${isPinMode ? styles.crosshairCursor : ''}`}>
             {/* Live Drawing Acreage Notification Banner when mouse dragging */}
             {isDrawingNewBox && (
               <div className={styles.liveDrawBadge}>
@@ -932,9 +979,10 @@ export default function SatellitePage() {
               </div>
             )}
 
+            {/* Static Leaflet mounting target: MUST never receive dynamic React className to preserve Leaflet classes */}
             <div
               ref={mapContainerRef}
-              className={`${styles.mapElement} ${isPinMode ? styles.crosshairCursor : ''}`}
+              style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1 }}
             />
 
             {/* Top-Right Multispectral Controls Overlay */}
@@ -966,7 +1014,7 @@ export default function SatellitePage() {
                     onClick={() => setLayerMode('optical')}
                   >
                     <span>True Color Satellite</span>
-                    <span style={{ fontSize: 10, opacity: 0.8 }}>Esri HD</span>
+                    <span style={{ fontSize: 10, opacity: 0.8 }}>HD Photo</span>
                   </button>
                   <button
                     type="button"
@@ -995,6 +1043,27 @@ export default function SatellitePage() {
                     />
                   </div>
                 )}
+
+                {/* Satellite Imagery Provider Switcher */}
+                <div className={styles.controlTitle} style={{ marginTop: 14 }}>
+                  <MdSatelliteAlt style={{ verticalAlign: 'middle' }} /> Satellite Source
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  <button
+                    type="button"
+                    className={`${styles.sourceButton} ${mapSource === 'google' ? styles.sourceButtonActive : ''}`}
+                    onClick={() => setMapSource('google')}
+                  >
+                    🛰️ Google HD
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.sourceButton} ${mapSource === 'esri' ? styles.sourceButtonActive : ''}`}
+                    onClick={() => setMapSource('esri')}
+                  >
+                    🌍 Esri World
+                  </button>
+                </div>
               </div>
             </div>
 

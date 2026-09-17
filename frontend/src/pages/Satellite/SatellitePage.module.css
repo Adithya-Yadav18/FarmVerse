@@ -278,3 +278,72 @@
   align-items: center;
   gap: 8px;
 }
+
+.sourceButton {
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  color: #E2E8F0;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.sourceButton:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.sourceButtonActive {
+  background: #107850 !important;
+  color: #FFFFFF !important;
+  border-color: #34D399 !important;
+}
+
+/* Defensive Leaflet resets: prevent global CSS resets from breaking map tiles */
+:global(.leaflet-container) {
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  background: #0f172a !important;
+}
+
+:global(.leaflet-container .leaflet-tile-pane img),
+:global(.leaflet-container .leaflet-tile),
+:global(.leaflet-tile) {
+  max-width: none !important;
+  max-height: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+:global(.leaflet-container .leaflet-overlay-pane svg),
+:global(.leaflet-overlay-pane svg) {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+:global(.leaflet-pane) {
+  z-index: 400 !important;
+}
+
+:global(.leaflet-tile-pane) {
+  z-index: 200 !important;
+}
+
+:global(.leaflet-overlay-pane) {
+  z-index: 400 !important;
+}
+
+:global(.leaflet-marker-pane) {
+  z-index: 600 !important;
+}
+
+:global(.leaflet-popup-pane) {
+  z-index: 700 !important;
+}
+
