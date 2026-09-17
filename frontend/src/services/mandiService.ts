@@ -19,6 +19,11 @@ export const mandiService = {
     return res.data;
   },
 
+  refreshPrices: async (farmId?: number): Promise<MandiPrice[]> => {
+    const res = await api.post('/mandi/refresh', null, { params: { farmId } });
+    return res.data;
+  },
+
   calculateArbitrage: async (req: ArbitrageRequest): Promise<ArbitrageResponse> => {
     const res = await api.post('/mandi/arbitrage/calculate', req);
     return res.data;

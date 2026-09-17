@@ -66,7 +66,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/weather/**").permitAll() // NEW: Make weather public
                 .requestMatchers("/api/irrigation/iot/**").permitAll() // Real Hardware Device Protocol & Ingestion
                 .requestMatchers("/api/satellite/public-badge/**").permitAll() // Public Verification Badge
-                .requestMatchers("/api/mandi/summary", "/api/mandi/prices", "/api/mandi/arbitrage/**", "/api/mandi/history/**").permitAll() // Public e-NAM Market Prices & Arbitrage
+                .requestMatchers("/api/mandi/summary", "/api/mandi/prices", "/api/mandi/refresh", "/api/mandi/arbitrage/**", "/api/mandi/history/**").permitAll() // Public e-NAM Market Prices & Arbitrage
                 .requestMatchers("/api/trace/**").permitAll() // Public Farm-to-Fork QR Journey, Verification & Ledger
                 .requestMatchers("/api/credit/**").permitAll() // FarmVerse Alternative Agri-Credit Scoring & Micro-Loan API
                 .requestMatchers("/api/simulator/**").permitAll() // Generative Crop Simulator & Yield Engine

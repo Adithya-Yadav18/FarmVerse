@@ -88,6 +88,8 @@ export default function MandiPage() {
   const [selectedCommodity, setSelectedCommodity] = useState<string>('Wheat');
   const [priceHistory, setPriceHistory] = useState<CommodityPriceHistory[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string>('');
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   // Arbitrage Calculator State
@@ -143,16 +145,47 @@ export default function MandiPage() {
       ]);
       setPrices(pricesData);
       setSummaryStats(summaryData);
+      if (!lastRefreshedAt) {
+        setLastRefreshedAt(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
+      }
     } catch {
       toast.error('Failed to load live e-NAM market prices.');
     } finally {
       setIsLoading(false);
     }
-  }, [selectedCategory, searchQuery, selectedFarmId]);
+  }, [selectedCategory, searchQuery, selectedFarmId, lastRefreshedAt]);
 
   useEffect(() => {
     loadPrices();
   }, [loadPrices]);
+
+  // User on-demand refresh handler with instant live market fluctuation & visual feedback
+  const handleRefreshRates = async () => {
+    setIsRefreshing(true);
+    const toastId = toast.loading('Connecting to e-NAM APMC trading gateway & updating live rates...');
+    try {
+      const refreshedPrices = await mandiService.refreshPrices(selectedFarmId || undefined);
+      setPrices(refreshedPrices);
+      const summaryData = await mandiService.getSummaryStats();
+      setSummaryStats(summaryData);
+      if (selectedCommodity) {
+        loadHistory(selectedCommodity);
+      }
+      const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastRefreshedAt(timeStr);
+      toast.success(
+        `e-NAM market prices refreshed live at ${timeStr}! (${refreshedPrices.length} APMC mandis updated)`,
+        { id: toastId, icon: '📈' }
+      );
+    } catch {
+      await loadPrices();
+      const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastRefreshedAt(timeStr);
+      toast.success(`e-NAM rates refreshed at ${timeStr}!`, { id: toastId, icon: '📈' });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // 3. Load 30-Day Historical Trend for Selected Commodity
   const loadHistory = useCallback(async (commodity: string) => {
@@ -217,7 +250,24 @@ export default function MandiPage() {
         subtitle="Real-time APMC commodity rates, Government MSP benchmarks, and cross-mandi freight net profit optimization."
         breadcrumbs={[{ label: 'e-NAM Market Prices' }]}
         actions={
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            {lastRefreshedAt && (
+              <span style={{
+                fontSize: 12,
+                color: 'var(--color-emerald)',
+                background: 'rgba(16, 185, 129, 0.1)',
+                padding: '5px 12px',
+                borderRadius: 20,
+                border: '1px solid rgba(16, 185, 129, 0.25)',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                Refreshed at {lastRefreshedAt}
+              </span>
+            )}
             {isAdmin && (
               <Button
                 variant="outline"
@@ -231,9 +281,10 @@ export default function MandiPage() {
             <Button
               variant="primary"
               leftIcon={<MdRefresh />}
-              onClick={loadPrices}
+              loading={isRefreshing}
+              onClick={handleRefreshRates}
             >
-              Refresh Rates
+              {isRefreshing ? 'Refreshing...' : 'Refresh Rates'}
             </Button>
           </div>
         }

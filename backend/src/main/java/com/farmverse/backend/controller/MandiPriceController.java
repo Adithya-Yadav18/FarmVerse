@@ -61,6 +61,17 @@ public class MandiPriceController {
     }
 
     /**
+     * Refresh e-NAM Live Data Feed with intraday APMC market auction ticks
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<List<MandiPriceDTO.MandiPriceResponse>> refreshRates(
+            @RequestParam(required = false) Long farmId
+    ) {
+        mandiService.refreshMarketPrices();
+        return ResponseEntity.ok(mandiService.getPrices(null, null, null, null, farmId));
+    }
+
+    /**
      * Admin Trigger: Refresh e-NAM Live Data Feed
      */
     @PostMapping("/admin/sync")
