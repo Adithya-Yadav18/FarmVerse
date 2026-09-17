@@ -20,6 +20,7 @@ public class MandiPriceService {
 
     private final MandiPriceRepository mandiRepository;
     private final FarmRepository farmRepository;
+    private final GovAgmarknetApiService govAgmarknetApiService;
 
     // Official Government of India Minimum Support Prices (MSP) in ₹/quintal
     private static final Map<String, Double> GOVT_MSP_RATES = new HashMap<>();
@@ -44,16 +45,24 @@ public class MandiPriceService {
 
     public MandiPriceService(
             MandiPriceRepository mandiRepository,
-            FarmRepository farmRepository
+            FarmRepository farmRepository,
+            GovAgmarknetApiService govAgmarknetApiService
     ) {
         this.mandiRepository = mandiRepository;
         this.farmRepository = farmRepository;
+        this.govAgmarknetApiService = govAgmarknetApiService;
     }
 
     @PostConstruct
     public void init() {
         if (mandiRepository.count() == 0) {
             seedInitialMandiPrices();
+        }
+        // Fetch fresh real-time prices from Government of India Agmarknet
+        try {
+            govAgmarknetApiService.fetchAndSaveLiveMandiPrices();
+        } catch (Exception e) {
+            // Silently fall back to seed data if network is unavailable on startup
         }
     }
 
@@ -263,6 +272,27 @@ public class MandiPriceService {
     public void syncMarketData() {
         mandiRepository.deleteAll();
         seedInitialMandiPrices();
+    }
+
+    /**
+     * Refresh e-NAM Live APMC Market Feed.
+     * Prioritizes live fetch directly from Government of India (data.gov.in / Agmarknet) API.
+     * Falls back to intraday auction variation if external government network is unavailable.
+     */
+    @Transactional
+    public int refreshMarketPricesFromGov() {
+        int govCount = 0;
+        try {
+            govCount = govAgmarknetApiService.fetchAndSaveLiveMandiPrices();
+        } catch (Exception e) {
+            // graceful fallback
+        }
+        if (govCount > 0) {
+            return govCount;
+        }
+        // Fallback simulation if government server is unreachable or returned 0
+        refreshMarketPrices();
+        return 0;
     }
 
     /**

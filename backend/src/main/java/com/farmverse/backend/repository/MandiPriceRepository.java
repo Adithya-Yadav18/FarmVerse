@@ -7,9 +7,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface MandiPriceRepository extends JpaRepository<MandiPriceEntity, Long> {
+
+    Optional<MandiPriceEntity> findFirstByMandiNameIgnoreCaseAndCommodityIgnoreCase(String mandiName, String commodity);
 
     List<MandiPriceEntity> findByCommodityIgnoreCaseOrderByModalPriceDesc(String commodity);
 

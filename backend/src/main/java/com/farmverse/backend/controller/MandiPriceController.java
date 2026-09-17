@@ -61,13 +61,13 @@ public class MandiPriceController {
     }
 
     /**
-     * Refresh e-NAM Live Data Feed with intraday APMC market auction ticks
+     * Refresh e-NAM Live Data Feed directly from Government of India Agmarknet
      */
     @PostMapping("/refresh")
     public ResponseEntity<List<MandiPriceDTO.MandiPriceResponse>> refreshRates(
             @RequestParam(required = false) Long farmId
     ) {
-        mandiService.refreshMarketPrices();
+        mandiService.refreshMarketPricesFromGov();
         return ResponseEntity.ok(mandiService.getPrices(null, null, null, null, farmId));
     }
 

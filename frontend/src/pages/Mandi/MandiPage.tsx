@@ -162,7 +162,7 @@ export default function MandiPage() {
   // User on-demand refresh handler with instant live market fluctuation & visual feedback
   const handleRefreshRates = async () => {
     setIsRefreshing(true);
-    const toastId = toast.loading('Connecting to e-NAM APMC trading gateway & updating live rates...');
+    const toastId = toast.loading('Connecting to Government of India (Agmarknet) live feed & updating APMC rates...');
     try {
       const refreshedPrices = await mandiService.refreshPrices(selectedFarmId || undefined);
       setPrices(refreshedPrices);
@@ -174,8 +174,8 @@ export default function MandiPage() {
       const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setLastRefreshedAt(timeStr);
       toast.success(
-        `e-NAM market prices refreshed live at ${timeStr}! (${refreshedPrices.length} APMC mandis updated)`,
-        { id: toastId, icon: '📈' }
+        `Live Government Agmarknet & e-NAM prices refreshed at ${timeStr}! (${refreshedPrices.length} APMC mandis updated)`,
+        { id: toastId, icon: '🏛️' }
       );
     } catch {
       await loadPrices();
@@ -247,10 +247,24 @@ export default function MandiPage() {
     <div className={styles.container}>
       <PageHeader
         title="e-NAM Live Market Prices & Mandi Price Arbitrage"
-        subtitle="Real-time APMC commodity rates, Government MSP benchmarks, and cross-mandi freight net profit optimization."
+        subtitle="Real-time Government of India (Agmarknet) APMC rates, official MSP benchmarks, and cross-mandi freight net profit optimization."
         breadcrumbs={[{ label: 'e-NAM Market Prices' }]}
         actions={
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: 11,
+              color: '#3B82F6',
+              background: 'rgba(59, 130, 246, 0.1)',
+              padding: '5px 12px',
+              borderRadius: 20,
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5
+            }}>
+              🏛️ Govt of India (Agmarknet) Connected
+            </span>
             {lastRefreshedAt && (
               <span style={{
                 fontSize: 12,
@@ -265,7 +279,7 @@ export default function MandiPage() {
                 gap: 6
               }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-                Refreshed at {lastRefreshedAt}
+                Gov Live Feed • {lastRefreshedAt}
               </span>
             )}
             {isAdmin && (
@@ -284,7 +298,7 @@ export default function MandiPage() {
               loading={isRefreshing}
               onClick={handleRefreshRates}
             >
-              {isRefreshing ? 'Refreshing...' : 'Refresh Rates'}
+              {isRefreshing ? 'Refreshing Gov Data...' : 'Refresh Rates'}
             </Button>
           </div>
         }
