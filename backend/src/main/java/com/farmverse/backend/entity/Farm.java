@@ -47,6 +47,11 @@ public class Farm {
     private Double latitude;
     private Double longitude;
 
+    private Double boundaryNorth;
+    private Double boundarySouth;
+    private Double boundaryEast;
+    private Double boundaryWest;
+
     // NEW: Link to the Crop table (One Farm has Many Crops)
     @OneToMany(mappedBy = "farm", fetch = jakarta.persistence.FetchType.EAGER)
     private List<Crop> cropEntities = new ArrayList<>();

@@ -154,8 +154,37 @@ export default function SatellitePage() {
         setNdviData(data);
         setPinnedCoords({ lat: data.centerLat, lng: data.centerLng });
 
+        // Retrieve any locally cached boundary for immediate consistency
+        const localSaved = localStorage.getItem(`farmverse_field_bounds_${farmId}`);
+        let parsedLocalBounds: { north: number; south: number; east: number; west: number } | null = null;
+        if (localSaved) {
+          try {
+            const parsed = JSON.parse(localSaved);
+            if (parsed.bounds?.north && parsed.bounds?.south) {
+              parsedLocalBounds = parsed.bounds;
+            }
+          } catch (e) {}
+        }
+
         // Initialize field bounding block around farm
-        if (data.gridCells?.length > 0) {
+        if (data.farmBounds && data.farmBounds.length === 2) {
+          const bSouth = data.farmBounds[0][0];
+          const bWest = data.farmBounds[0][1];
+          const bNorth = data.farmBounds[1][0];
+          const bEast = data.farmBounds[1][1];
+          if (bNorth > bSouth && bEast > bWest) {
+            setFieldBounds({
+              north: bNorth,
+              south: bSouth,
+              east: bEast,
+              west: bWest,
+            });
+          } else if (parsedLocalBounds) {
+            setFieldBounds(parsedLocalBounds);
+          }
+        } else if (parsedLocalBounds) {
+          setFieldBounds(parsedLocalBounds);
+        } else if (data.gridCells?.length > 0) {
           const lats = data.gridCells.flatMap(c => [c.bounds[0][0], c.bounds[1][0]]);
           const lngs = data.gridCells.flatMap(c => [c.bounds[0][1], c.bounds[1][1]]);
           setFieldBounds({
@@ -197,6 +226,18 @@ export default function SatellitePage() {
 
   useEffect(() => {
     if (selectedFarmId !== null) {
+      const localSaved = localStorage.getItem(`farmverse_field_bounds_${selectedFarmId}`);
+      if (localSaved) {
+        try {
+          const parsed = JSON.parse(localSaved);
+          if (parsed.bounds?.north && parsed.bounds?.south) {
+            setFieldBounds(parsed.bounds);
+            if (parsed.lat && parsed.lng) {
+              setPinnedCoords({ lat: parsed.lat, lng: parsed.lng });
+            }
+          }
+        } catch (e) {}
+      }
       loadSatelliteTelemetry(selectedFarmId);
     }
   }, [selectedFarmId, loadSatelliteTelemetry]);
@@ -645,13 +686,41 @@ export default function SatellitePage() {
     setIsSavingCoords(true);
     const toastId = toast.loading('Saving exact farm coordinates and recalibrating Sentinel-2 telemetry...');
     try {
-      const updated = await satelliteService.updateCoordinates(selectedFarmId, finalLat, finalLng);
+      const acreage = fieldBounds ? calculateFieldAcreage(fieldBounds) : null;
+      const updated = await satelliteService.updateCoordinates(
+        selectedFarmId,
+        finalLat,
+        finalLng,
+        fieldBounds,
+        acreage?.acres,
+        acreage?.hectares
+      );
+
+      // Save to localStorage as immediate persistent cache
+      if (fieldBounds) {
+        localStorage.setItem(`farmverse_field_bounds_${selectedFarmId}`, JSON.stringify({
+          bounds: fieldBounds,
+          acres: acreage?.acres,
+          hectares: acreage?.hectares,
+          lat: finalLat,
+          lng: finalLng,
+          updatedAt: new Date().toISOString(),
+        }));
+      }
+
       setNdviData(updated);
       setPinnedCoords({ lat: updated.centerLat, lng: updated.centerLng });
+
+      // Refresh farms list so the farm selector and farm entity data show updated area
+      loadFarms();
+
       setIsPinMode(false);
       setIsDrawingNewBox(false);
       setDrawStartLatLng(null);
-      toast.success('Farm field block & centroid saved! Multispectral satellite telemetry calibrated.', { id: toastId });
+      toast.success(
+        `Farm field block & area saved! (${acreage?.acres || 0} Acres / ${acreage?.hectares || 0} Ha). Multispectral telemetry calibrated.`,
+        { id: toastId }
+      );
     } catch {
       toast.error('Failed to save farm coordinates. Please check connection.', { id: toastId });
     } finally {
@@ -665,17 +734,30 @@ export default function SatellitePage() {
       rubberBandRectRef.current = null;
     }
     setLiveHoverAcreage(null);
-    if (ndviData) {
-      setPinnedCoords({ lat: ndviData.centerLat, lng: ndviData.centerLng });
-      if (ndviData.gridCells?.length > 0) {
-        const lats = ndviData.gridCells.flatMap(c => [c.bounds[0][0], c.bounds[1][0]]);
-        const lngs = ndviData.gridCells.flatMap(c => [c.bounds[0][1], c.bounds[1][1]]);
-        setFieldBounds({
-          north: Math.max(...lats),
-          south: Math.min(...lats),
-          east: Math.max(...lngs),
-          west: Math.min(...lngs),
-        });
+    if (selectedFarmId) {
+      const localSaved = localStorage.getItem(`farmverse_field_bounds_${selectedFarmId}`);
+      if (localSaved) {
+        try {
+          const parsed = JSON.parse(localSaved);
+          if (parsed.bounds?.north && parsed.bounds?.south) {
+            setFieldBounds(parsed.bounds);
+            if (parsed.lat && parsed.lng) {
+              setPinnedCoords({ lat: parsed.lat, lng: parsed.lng });
+            }
+          }
+        } catch (e) {}
+      } else if (ndviData) {
+        setPinnedCoords({ lat: ndviData.centerLat, lng: ndviData.centerLng });
+        if (ndviData.gridCells?.length > 0) {
+          const lats = ndviData.gridCells.flatMap(c => [c.bounds[0][0], c.bounds[1][0]]);
+          const lngs = ndviData.gridCells.flatMap(c => [c.bounds[0][1], c.bounds[1][1]]);
+          setFieldBounds({
+            north: Math.max(...lats),
+            south: Math.min(...lats),
+            east: Math.max(...lngs),
+            west: Math.min(...lngs),
+          });
+        }
       }
     }
     setIsPinMode(false);
@@ -755,7 +837,7 @@ export default function SatellitePage() {
               >
                 {farms.map(f => (
                   <option key={f.id} value={f.id}>
-                    {f.name} ({f.location || 'Active Farmland'})
+                    {f.name} ({f.location || 'Active Farmland'}{f.area ? ` • ${f.area} Ac` : ''})
                   </option>
                 ))}
               </select>
@@ -1117,6 +1199,27 @@ export default function SatellitePage() {
                 </span>
               )}
             </div>
+
+            {fieldBounds && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                background: 'rgba(16, 185, 129, 0.08)',
+                border: '1px solid rgba(16, 185, 129, 0.25)',
+                borderRadius: 8,
+                marginBottom: 12,
+                fontSize: 12.5,
+              }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  🌾 Calibrated Field Area:
+                </span>
+                <strong style={{ color: 'var(--color-emerald)', fontWeight: 700 }}>
+                  {calculateFieldAcreage(fieldBounds).acres} Acres ({calculateFieldAcreage(fieldBounds).hectares} Ha)
+                </strong>
+              </div>
+            )}
 
             {selectedCell ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

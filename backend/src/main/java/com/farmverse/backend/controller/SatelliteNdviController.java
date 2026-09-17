@@ -40,7 +40,7 @@ public class SatelliteNdviController {
             @RequestBody SatelliteNdviDTO.UpdateCoordinatesRequest req,
             Authentication auth
     ) {
-        return ResponseEntity.ok(satelliteService.updateFarmCoordinates(farmId, req.getLatitude(), req.getLongitude(), auth.getName()));
+        return ResponseEntity.ok(satelliteService.updateFarmCoordinates(farmId, req, auth.getName()));
     }
 
     @GetMapping("/farms/{farmId}/history")

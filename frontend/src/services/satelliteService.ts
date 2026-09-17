@@ -17,8 +17,24 @@ export const satelliteService = {
     return data;
   },
 
-  updateCoordinates: async (farmId: number | string, latitude: number, longitude: number): Promise<SatelliteNdviRecord> => {
-    const { data } = await api.put<SatelliteNdviRecord>(`/satellite/farms/${farmId}/coordinates`, { latitude, longitude });
+  updateCoordinates: async (
+    farmId: number | string,
+    latitude: number,
+    longitude: number,
+    bounds?: { north: number; south: number; east: number; west: number } | null,
+    areaAcres?: number,
+    areaHectares?: number
+  ): Promise<SatelliteNdviRecord> => {
+    const { data } = await api.put<SatelliteNdviRecord>(`/satellite/farms/${farmId}/coordinates`, {
+      latitude,
+      longitude,
+      north: bounds?.north,
+      south: bounds?.south,
+      east: bounds?.east,
+      west: bounds?.west,
+      areaAcres,
+      areaHectares
+    });
     return data;
   },
 

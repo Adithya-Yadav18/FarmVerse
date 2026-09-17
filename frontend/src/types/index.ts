@@ -49,6 +49,12 @@ export interface Farm {
   imageUrl?: string;
   createdAt: string;
   updatedAt: string;
+  latitude?: number;
+  longitude?: number;
+  boundaryNorth?: number;
+  boundarySouth?: number;
+  boundaryEast?: number;
+  boundaryWest?: number;
 }
 
 // ─── Crop ─────────────────────────────────────────────────────────────────────

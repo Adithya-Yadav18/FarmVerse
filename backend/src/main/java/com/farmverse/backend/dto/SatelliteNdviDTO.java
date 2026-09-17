@@ -100,5 +100,11 @@ public class SatelliteNdviDTO {
     public static class UpdateCoordinatesRequest {
         private Double latitude;
         private Double longitude;
+        private Double north;
+        private Double south;
+        private Double east;
+        private Double west;
+        private Double areaAcres;
+        private Double areaHectares;
     }
 }

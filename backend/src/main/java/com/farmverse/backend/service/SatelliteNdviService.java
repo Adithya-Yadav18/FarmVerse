@@ -127,7 +127,16 @@ public class SatelliteNdviService {
             boolean isLegacyStatic = Math.abs(existing.getMeanNdvi() - 0.71) < 0.001
                     && Math.abs(existing.getCloudCoveragePercent() - 1.4) < 0.001;
 
-            if (isStaleDelhiGrid || isOldMysoreGrid || isOldAndhraGrid || isLegacyStatic) {
+            boolean boundaryMismatch = false;
+            if (farm.getBoundaryNorth() != null && farm.getBoundarySouth() != null) {
+                String gridJson = existing.getGridDataJson();
+                String northStr = String.format(java.util.Locale.US, "%.4f", farm.getBoundaryNorth());
+                if (gridJson == null || !gridJson.contains(northStr)) {
+                    boundaryMismatch = true;
+                }
+            }
+
+            if (isStaleDelhiGrid || isOldMysoreGrid || isOldAndhraGrid || isLegacyStatic || boundaryMismatch) {
                 entity = generateFreshSatellitePass(farm);
             } else {
                 entity = existing;
@@ -149,13 +158,26 @@ public class SatelliteNdviService {
     }
 
     @Transactional
-    public SatelliteNdviDTO.NdviRecordResponse updateFarmCoordinates(Long farmId, Double latitude, Double longitude, String userEmail) {
-        if (latitude == null || longitude == null) {
+    public SatelliteNdviDTO.NdviRecordResponse updateFarmCoordinates(Long farmId, SatelliteNdviDTO.UpdateCoordinatesRequest req, String userEmail) {
+        if (req == null || req.getLatitude() == null || req.getLongitude() == null) {
             throw new IllegalArgumentException("Latitude and Longitude cannot be null");
         }
         Farm farm = resolveFarmWithPermission(farmId, userEmail);
-        farm.setLatitude(latitude);
-        farm.setLongitude(longitude);
+        farm.setLatitude(req.getLatitude());
+        farm.setLongitude(req.getLongitude());
+
+        if (req.getNorth() != null && req.getSouth() != null && req.getEast() != null && req.getWest() != null
+                && req.getNorth() > req.getSouth() && req.getEast() > req.getWest()) {
+            farm.setBoundaryNorth(req.getNorth());
+            farm.setBoundarySouth(req.getSouth());
+            farm.setBoundaryEast(req.getEast());
+            farm.setBoundaryWest(req.getWest());
+        }
+
+        if (req.getAreaAcres() != null && req.getAreaAcres() > 0) {
+            farm.setTotalAreaAcres(Math.round(req.getAreaAcres() * 100.0) / 100.0);
+        }
+
         farmRepository.save(farm);
 
         SatelliteNdviEntity freshScan = generateFreshSatellitePass(farm);
@@ -414,12 +436,27 @@ public class SatelliteNdviService {
             }
         }
 
-        // Generate 4x4 spatial sub-plot grid
+        // Generate 4x4 spatial sub-plot grid fitting exact farm boundaries
         List<SatelliteNdviDTO.NdviGridCellDto> grid = new ArrayList<>();
-        double stepLat = 0.0012;
-        double stepLng = 0.0016;
-        double startLat = centerLat - (2 * stepLat);
-        double startLng = centerLng - (2 * stepLng);
+        double startLat;
+        double startLng;
+        double stepLat;
+        double stepLng;
+
+        if (farm.getBoundaryNorth() != null && farm.getBoundarySouth() != null &&
+            farm.getBoundaryEast() != null && farm.getBoundaryWest() != null &&
+            farm.getBoundaryNorth() > farm.getBoundarySouth() &&
+            farm.getBoundaryEast() > farm.getBoundaryWest()) {
+            stepLat = (farm.getBoundaryNorth() - farm.getBoundarySouth()) / 4.0;
+            stepLng = (farm.getBoundaryEast() - farm.getBoundaryWest()) / 4.0;
+            startLat = farm.getBoundarySouth();
+            startLng = farm.getBoundaryWest();
+        } else {
+            stepLat = 0.0012;
+            stepLng = 0.0016;
+            startLat = centerLat - (2 * stepLat);
+            startLng = centerLng - (2 * stepLng);
+        }
 
         String[] rows = {"South-West", "Mid-West", "Mid-East", "North-East"};
         double totalNdvi = 0.0;
@@ -521,11 +558,22 @@ public class SatelliteNdviService {
             }
         }
 
-        double step = 0.003;
-        double[][] farmBounds = new double[][]{
-                {centerLat - step, centerLng - step},
-                {centerLat + step, centerLng + step}
-        };
+        double[][] farmBounds;
+        if (farm.getBoundaryNorth() != null && farm.getBoundarySouth() != null &&
+            farm.getBoundaryEast() != null && farm.getBoundaryWest() != null &&
+            farm.getBoundaryNorth() > farm.getBoundarySouth() &&
+            farm.getBoundaryEast() > farm.getBoundaryWest()) {
+            farmBounds = new double[][]{
+                    {farm.getBoundarySouth(), farm.getBoundaryWest()},
+                    {farm.getBoundaryNorth(), farm.getBoundaryEast()}
+            };
+        } else {
+            double step = 0.003;
+            farmBounds = new double[][]{
+                    {centerLat - step, centerLng - step},
+                    {centerLat + step, centerLng + step}
+            };
+        }
 
         return SatelliteNdviDTO.NdviRecordResponse.builder()
                 .id(entity.getId())
