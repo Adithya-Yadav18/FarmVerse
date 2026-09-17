@@ -527,7 +527,7 @@ export default function MandiPage() {
 
         {/* Arbitrage Mandis Breakdown Table */}
         {arbitrageResult && (
-          <div style={{ overflowX: 'auto', marginTop: 16 }}>
+          <div className={styles.tableScrollWrapper}>
             <table className={styles.arbitrageTable}>
               <thead>
                 <tr>
