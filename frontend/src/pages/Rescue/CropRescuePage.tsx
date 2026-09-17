@@ -24,6 +24,8 @@ import type {
 
 export default function CropRescuePage() {
   const { user } = useAuth();
+  const rawRole = (user?.role || 'Farmer').replace('ROLE_', '').toLowerCase();
+  const isAgronomist = rawRole.includes('agronomist');
   const [tickets, setTickets] = useState<RescueTicket[]>([]);
   const [activeTicket, setActiveTicket] = useState<RescueTicket | null>(null);
   const [presets, setPresets] = useState<EmergencyCategoryPreset[]>([]);
@@ -154,11 +156,26 @@ export default function CropRescuePage() {
           </p>
         </div>
 
-        <button className={styles.sosBeaconBtn} onClick={() => setShowSosModal(true)}>
-          <MdEmergency size={24} />
-          TRIGGER CROP RESCUE SOS
-        </button>
+        {isAgronomist ? (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#3b82f6', padding: '12px 20px', borderRadius: 12, fontWeight: 700, fontSize: 14 }}>
+            👨‍🌾 Agronomist Triage Command Desk
+          </div>
+        ) : (
+          <button className={styles.sosBeaconBtn} onClick={() => setShowSosModal(true)}>
+            <MdEmergency size={24} />
+            TRIGGER CROP RESCUE SOS
+          </button>
+        )}
       </header>
+
+      {isAgronomist && (
+        <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 20px 0' }}>
+          <MdOutlineSecurity size={20} color="#3B82F6" />
+          <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+            <strong>👨‍🌾 Agronomist District Response Desk:</strong> You are in advisory and triage mode. Review incoming farmer emergency dossiers below, assess symptom descriptions, and verify antidote deployments.
+          </div>
+        </div>
+      )}
 
       {/* Stats Ribbon */}
       <div className={styles.statsStrip}>

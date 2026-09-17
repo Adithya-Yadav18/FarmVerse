@@ -60,18 +60,12 @@ export function AppRouter() {
           {/* Protected - Dashboard Layout */}
           <Route element={<ProtectedRoute />}>
             <Route element={<DashboardLayout />}>
-              {/* Universal Access (All Roles) */}
+              {/* Universal Access (All Roles: Normal User, Farmer, Agronomist, Admin) */}
               <Route path="/dashboard"          element={<DashboardPage />} />
               <Route path="/weather"            element={<WeatherPage />} />
-              <Route path="/satellite"          element={<SatellitePage />} />
               <Route path="/mandi"              element={<MandiPage />} />
               <Route path="/traceability"       element={<TraceabilityPage />} />
-              <Route path="/credit-scoring"     element={<CreditScorePage />} />
-              <Route path="/simulator"          element={<CropSimulatorPage />} />
-              <Route path="/carbon"             element={<CarbonPage />} />
-              <Route path="/equipment"          element={<EquipmentPage />} />
               <Route path="/voice-assistant"    element={<VoiceAssistantPage />} />
-              <Route path="/crop-rescue"        element={<CropRescuePage />} />
               <Route path="/ai-recommendations" element={<AIPage />} />
               <Route path="/notifications"      element={<NotificationsPage />} />
               <Route path="/profile"            element={<ProfilePage />} />
@@ -82,18 +76,24 @@ export function AppRouter() {
                 <Route path="/admin/users" element={<AdminUserManagementPage />} />
               </Route>
 
-              {/* Agriculture & Field Operations Access (Farmer, Agronomist, Admin) */}
+              {/* Agriculture & Precision Field Operations (Farmer, Agronomist, Admin) */}
               <Route element={<ProtectedRoute allowedRoles={['Farmer', 'Agronomist', 'Admin']} />}>
-                <Route path="/farms"    element={<FarmsPage />} />
-                <Route path="/crops"    element={<CropsPage />} />
-                <Route path="/soil"     element={<SoilPage />} />
-                <Route path="/disease"  element={<DiseasePage />} />
-                <Route path="/reports"  element={<ReportsPage />} />
+                <Route path="/farms"        element={<FarmsPage />} />
+                <Route path="/crops"        element={<CropsPage />} />
+                <Route path="/soil"         element={<SoilPage />} />
+                <Route path="/irrigation"   element={<IrrigationPage />} />
+                <Route path="/satellite"    element={<SatellitePage />} />
+                <Route path="/simulator"    element={<CropSimulatorPage />} />
+                <Route path="/crop-rescue"  element={<CropRescuePage />} />
+                <Route path="/disease"      element={<DiseasePage />} />
+                <Route path="/reports"      element={<ReportsPage />} />
               </Route>
 
-              {/* Farm Operator Access (Farmer, Admin) */}
+              {/* Farm Commercial & Operator Access (Farmer, Admin Only - Hidden from Agronomist & Normal User) */}
               <Route element={<ProtectedRoute allowedRoles={['Farmer', 'Admin']} />}>
-                <Route path="/irrigation" element={<IrrigationPage />} />
+                <Route path="/equipment"      element={<EquipmentPage />} />
+                <Route path="/credit-scoring" element={<CreditScorePage />} />
+                <Route path="/carbon"         element={<CarbonPage />} />
               </Route>
             </Route>
           </Route>

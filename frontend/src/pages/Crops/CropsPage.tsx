@@ -19,9 +19,11 @@ import api from '../../services/api';
 
 export default function CropsPage() {
   const { user } = useAuth();
-  const isAgronomist = user?.role === 'Agronomist';
-  const isAdmin = user?.role === 'Admin';
-  const canManageCrops = !isAgronomist || isAdmin;
+  const rawRole = (user?.role || 'Farmer').replace('ROLE_', '').toLowerCase();
+  const isAgronomist = rawRole.includes('agronomist');
+  const isNormalUser = rawRole.includes('normal') || rawRole === 'user';
+  const isAdmin = rawRole.includes('admin');
+  const canManageCrops = (!isAgronomist && !isNormalUser) || isAdmin;
 
   const [crops, setCrops] = useState<Crop[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
@@ -224,11 +226,20 @@ export default function CropsPage() {
             <Button leftIcon={<MdAdd />} onClick={() => setShowAddModal(true)}>Add Crop</Button>
           ) : (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.12)', color: 'var(--color-primary, #3B82F6)', padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
-              <MdSecurity size={16} /> Agronomist Field View
+              <MdSecurity size={16} /> Agronomist Advisory Mode (Read-Only)
             </div>
           )
         }
       />
+
+      {!canManageCrops && (
+        <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, marginTop: 16 }}>
+          <MdSecurity size={20} color="#3B82F6" />
+          <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+            <strong>🌱 Agronomic Crop Surveillance Mode (Read-Only):</strong> You can monitor crop phenology, variety performance, and growth metrics. Adding, modifying, or deleting crop cycles is restricted to the farm operator.
+          </div>
+        </div>
+      )}
 
       <SearchFilter
         searchValue={search}

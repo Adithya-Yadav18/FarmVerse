@@ -18,6 +18,7 @@ import { Table, type Column } from '../../components/ui/Table/Table';
 import { Pagination } from '../../components/ui/Pagination/Pagination';
 import { usePagination } from '../../hooks/usePagination';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useAuth } from '../../context/AuthContext';
 import { irrigationService, type IrrigationStats, type CreateSchedulePayload, type IoTDevice } from '../../services/irrigationService';
 import api from '../../services/api';
 import type { IrrigationSchedule, Farm } from '../../types';
@@ -26,6 +27,13 @@ import styles from './Irrigation.module.css';
 const DAYS_OF_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function IrrigationPage() {
+  const { user } = useAuth();
+  const rawRole = (user?.role || 'Farmer').replace('ROLE_', '').toLowerCase();
+  const isAgronomist = rawRole.includes('agronomist');
+  const isNormalUser = rawRole.includes('normal') || rawRole === 'user';
+  const isAdmin = rawRole.includes('admin');
+  const canOperateHardware = (!isAgronomist && !isNormalUser) || isAdmin;
+
   const [data, setData] = useState<IrrigationSchedule[]>([]);
   const [stats, setStats] = useState<IrrigationStats>({
     totalVolumeTodayLiters: 5600,
@@ -295,6 +303,13 @@ export default function IrrigationPage() {
       key: 'actions',
       label: 'Pump Control',
       render: (_, row) => {
+        if (!canOperateHardware) {
+          return (
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              🔒 Hardware Locked (Farmer Only)
+            </span>
+          );
+        }
         const s = row.status as string;
         const id = row.id as string;
         return (
@@ -354,12 +369,27 @@ export default function IrrigationPage() {
               IoT Dispatcher ({iotDevices.length} Paired)
             </button>
 
-            <Button leftIcon={<MdAdd />} variant="primary" onClick={() => setIsModalOpen(true)}>
-              New Schedule
-            </Button>
+            {canOperateHardware ? (
+              <Button leftIcon={<MdAdd />} variant="primary" onClick={() => setIsModalOpen(true)}>
+                New Schedule
+              </Button>
+            ) : (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.12)', color: 'var(--color-primary, #3B82F6)', padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+                <MdSensors size={16} /> Agronomist Advisory View
+              </div>
+            )}
           </div>
         }
       />
+
+      {!canOperateHardware && (
+        <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <MdSensors size={20} color="#3B82F6" />
+          <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+            <strong>💧 Agronomist Irrigation Advisory Mode (Read-Only):</strong> You can monitor evapotranspiration, soil moisture sensor telemetry, and water schedules. Actuating physical pumps or creating schedules is reserved for the registered farm operator.
+          </div>
+        </div>
+      )}
 
       {/* Dynamic Telemetry KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18, marginBottom: 24 }}>

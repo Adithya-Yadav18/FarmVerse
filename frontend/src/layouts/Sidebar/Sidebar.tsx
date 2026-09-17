@@ -37,8 +37,8 @@ interface NavSection {
   items: NavItem[];
 }
 
-const ALL_ROLES: UserRole[] = ['Admin', 'Farmer', 'Agronomist', 'Normal User'];
-const AGRI_ROLES: UserRole[] = ['Admin', 'Farmer', 'Agronomist'];
+const UNIVERSAL_ROLES: UserRole[] = ['Admin', 'Farmer', 'Agronomist', 'Normal User'];
+const AGRI_SPECIALISTS: UserRole[] = ['Admin', 'Farmer', 'Agronomist'];
 const FARM_OPERATORS: UserRole[] = ['Admin', 'Farmer'];
 const ADMIN_ROLES: UserRole[] = ['Admin'];
 
@@ -46,43 +46,43 @@ const NAV_CONFIG: NavSection[] = [
   {
     section: 'Main',
     items: [
-      { to: '/dashboard', icon: <MdDashboard />, label: 'Dashboard', roles: ALL_ROLES },
+      { to: '/dashboard', icon: <MdDashboard />, label: 'Dashboard', roles: UNIVERSAL_ROLES },
     ],
   },
   {
     section: 'Farm Management',
     items: [
-      { to: '/farms', icon: <MdAgriculture />, label: 'Farms', roles: AGRI_ROLES },
-      { to: '/crops', icon: <MdGrass />, label: 'Crops', roles: AGRI_ROLES },
-      { to: '/soil', icon: <MdScience />, label: 'Soil Analysis', roles: AGRI_ROLES },
-      { to: '/irrigation', icon: <MdWaterDrop />, label: 'Irrigation', roles: FARM_OPERATORS },
+      { to: '/farms', icon: <MdAgriculture />, label: 'Farms', roles: AGRI_SPECIALISTS },
+      { to: '/crops', icon: <MdGrass />, label: 'Crops', roles: AGRI_SPECIALISTS },
+      { to: '/soil', icon: <MdScience />, label: 'Soil Analysis', roles: AGRI_SPECIALISTS },
+      { to: '/irrigation', icon: <MdWaterDrop />, label: 'Irrigation', roles: AGRI_SPECIALISTS },
     ],
   },
   {
     section: 'Intelligence',
     items: [
-      { to: '/weather', icon: <MdCloud />, label: 'Weather', roles: ALL_ROLES },
-      { to: '/satellite', icon: <MdSatelliteAlt />, label: 'Satellite NDVI', roles: ALL_ROLES },
-      { to: '/mandi', icon: <MdStorefront />, label: 'e-NAM Prices', roles: ALL_ROLES },
-      { to: '/traceability', icon: <MdQrCodeScanner />, label: 'QR Traceability', roles: ALL_ROLES },
-      { to: '/credit-scoring', icon: <MdAccountBalance />, label: 'Credit Scoring', roles: ALL_ROLES },
-      { to: '/simulator', icon: <GiWheat />, label: 'Crop Simulator', roles: ALL_ROLES },
-      { to: '/carbon', icon: <MdEnergySavingsLeaf />, label: 'Carbon Tracker', roles: ALL_ROLES },
-      { to: '/equipment', icon: <GiFarmTractor />, label: 'Equipment Rental', roles: ALL_ROLES },
-      { to: '/voice-assistant', icon: <MdRecordVoiceOver />, label: 'Kisan Voice Bot', roles: ALL_ROLES },
-      { to: '/crop-rescue', icon: <MdEmergency />, label: 'SOS Crop Rescue', roles: ALL_ROLES },
-      { to: '/disease', icon: <MdBugReport />, label: 'Disease Detection', roles: AGRI_ROLES },
-      { to: '/ai-recommendations', icon: <MdAutoAwesome />, label: 'AI Advisory', roles: ALL_ROLES },
+      { to: '/weather', icon: <MdCloud />, label: 'Weather', roles: UNIVERSAL_ROLES },
+      { to: '/satellite', icon: <MdSatelliteAlt />, label: 'Satellite NDVI', roles: AGRI_SPECIALISTS },
+      { to: '/mandi', icon: <MdStorefront />, label: 'e-NAM Prices', roles: UNIVERSAL_ROLES },
+      { to: '/traceability', icon: <MdQrCodeScanner />, label: 'QR Traceability', roles: UNIVERSAL_ROLES },
+      { to: '/credit-scoring', icon: <MdAccountBalance />, label: 'Credit Scoring', roles: FARM_OPERATORS },
+      { to: '/simulator', icon: <GiWheat />, label: 'Crop Simulator', roles: AGRI_SPECIALISTS },
+      { to: '/carbon', icon: <MdEnergySavingsLeaf />, label: 'Carbon Tracker', roles: FARM_OPERATORS },
+      { to: '/equipment', icon: <GiFarmTractor />, label: 'Equipment Rental', roles: FARM_OPERATORS },
+      { to: '/voice-assistant', icon: <MdRecordVoiceOver />, label: 'Kisan Voice Bot', roles: UNIVERSAL_ROLES },
+      { to: '/crop-rescue', icon: <MdEmergency />, label: 'SOS Crop Rescue', roles: AGRI_SPECIALISTS },
+      { to: '/disease', icon: <MdBugReport />, label: 'Disease Detection', roles: AGRI_SPECIALISTS },
+      { to: '/ai-recommendations', icon: <MdAutoAwesome />, label: 'AI Advisory', roles: UNIVERSAL_ROLES },
     ],
   },
   {
     section: 'Reports & Settings',
     items: [
       { to: '/admin/users', icon: <MdManageAccounts />, label: 'User Governance', roles: ADMIN_ROLES },
-      { to: '/notifications', icon: <MdNotifications />, label: 'Notifications', badge: true, roles: ALL_ROLES },
-      { to: '/reports', icon: <MdAssessment />, label: 'Reports', roles: AGRI_ROLES },
-      { to: '/profile', icon: <MdPerson />, label: 'Profile', roles: ALL_ROLES },
-      { to: '/settings', icon: <MdSettings />, label: 'Settings', roles: ALL_ROLES },
+      { to: '/notifications', icon: <MdNotifications />, label: 'Notifications', badge: true, roles: UNIVERSAL_ROLES },
+      { to: '/reports', icon: <MdAssessment />, label: 'Reports', roles: AGRI_SPECIALISTS },
+      { to: '/profile', icon: <MdPerson />, label: 'Profile', roles: UNIVERSAL_ROLES },
+      { to: '/settings', icon: <MdSettings />, label: 'Settings', roles: UNIVERSAL_ROLES },
     ],
   },
 ];

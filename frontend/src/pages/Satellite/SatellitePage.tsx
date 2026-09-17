@@ -57,6 +57,9 @@ export default function SatellitePage() {
   // Farm Pinning & Exact Area Selection State
   const [isPinMode, setIsPinMode] = useState<boolean>(false);
   const [pinnedCoords, setPinnedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [fieldBounds, setFieldBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
+  const [isDrawingNewBox, setIsDrawingNewBox] = useState<boolean>(false);
+  const [drawStartLatLng, setDrawStartLatLng] = useState<{ lat: number; lng: number } | null>(null);
   const [isSavingCoords, setIsSavingCoords] = useState<boolean>(false);
 
   // Map Controls State
@@ -77,6 +80,23 @@ export default function SatellitePage() {
   const markerRef = useRef<L.Marker | null>(null);
   const isPinModeRef = useRef<boolean>(false);
   isPinModeRef.current = isPinMode;
+  const isDrawingNewBoxRef = useRef<boolean>(false);
+  isDrawingNewBoxRef.current = isDrawingNewBox;
+  const drawStartRef = useRef<{ lat: number; lng: number } | null>(null);
+  drawStartRef.current = drawStartLatLng;
+  const fieldBoundsRef = useRef<{ north: number; south: number; east: number; west: number } | null>(null);
+  fieldBoundsRef.current = fieldBounds;
+
+  // Acreage & Metric Calculation Helper
+  const calculateFieldAcreage = (b: { north: number; south: number; east: number; west: number }) => {
+    const midLat = (b.north + b.south) / 2;
+    const latMeters = Math.abs(b.north - b.south) * 111320;
+    const lngMeters = Math.abs(b.east - b.west) * 111320 * Math.cos((midLat * Math.PI) / 180);
+    const sqMeters = latMeters * lngMeters;
+    const hectares = sqMeters / 10000;
+    const acres = hectares * 2.47105;
+    return { hectares: Number(hectares.toFixed(2)), acres: Number(acres.toFixed(2)) };
+  };
 
   // 1. Fetch Farms List
   const loadFarms = useCallback(async () => {
@@ -112,6 +132,26 @@ export default function SatellitePage() {
         setNdviData(data);
         setPinnedCoords({ lat: data.centerLat, lng: data.centerLng });
 
+        // Initialize field bounding block around farm
+        if (data.gridCells?.length > 0) {
+          const lats = data.gridCells.flatMap(c => [c.bounds[0][0], c.bounds[1][0]]);
+          const lngs = data.gridCells.flatMap(c => [c.bounds[0][1], c.bounds[1][1]]);
+          setFieldBounds({
+            north: Math.max(...lats),
+            south: Math.min(...lats),
+            east: Math.max(...lngs),
+            west: Math.min(...lngs),
+          });
+        } else {
+          const delta = 0.0018; // ~200m field perimeter
+          setFieldBounds({
+            north: data.centerLat + delta,
+            south: data.centerLat - delta,
+            east: data.centerLng + delta,
+            west: data.centerLng - delta,
+          });
+        }
+
         if (data.gridCells?.length > 0) {
           const stressed = data.gridCells.find(c => c.status === 'Stress' || c.status === 'Critical');
           setSelectedCell(stressed || data.gridCells[0]);
@@ -143,10 +183,12 @@ export default function SatellitePage() {
   const handleFarmChange = (newFarmId: number) => {
     setSelectedFarmId(newFarmId);
     setIsPinMode(false);
+    setIsDrawingNewBox(false);
+    setDrawStartLatLng(null);
     loadSatelliteTelemetry(newFarmId);
   };
 
-  // 3. Initialize Leaflet Map
+  // 3. Initialize Leaflet Map with Zero-Blanking ResizeObserver
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -161,44 +203,176 @@ export default function SatellitePage() {
       // Esri World Imagery (High-Resolution Global Satellite Photography - 100% Free)
       L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 19,
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP',
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, USDA, USGS, GeoEye',
       }).addTo(map);
 
-      // Layer group for NDVI/NDWI Grid polygons and center marker
+      // Layer group for NDVI/NDWI Grid polygons, field block rectangle, and markers
       const layerGroup = L.layerGroup().addTo(map);
       gridLayerGroupRef.current = layerGroup;
       mapInstanceRef.current = map;
 
-      // Map Click Handler for Precision Farm Pinning
+      // Click Handler for Drawing Field Box or Repositioning
       map.on('click', (e: L.LeafletMouseEvent) => {
         if (!isPinModeRef.current) return;
-        const newCoords = { lat: e.latlng.lat, lng: e.latlng.lng };
-        setPinnedCoords(newCoords);
-        toast('Farm pin moved to: ' + newCoords.lat.toFixed(5) + '°, ' + newCoords.lng.toFixed(5) + '°', {
-          icon: '📍',
-          duration: 2000
-        });
+
+        if (isDrawingNewBoxRef.current) {
+          if (!drawStartRef.current) {
+            setDrawStartLatLng({ lat: e.latlng.lat, lng: e.latlng.lng });
+            toast('Corner 1 set! Now click the opposite corner to draw your field block.', { icon: '📍' });
+          } else {
+            const start = drawStartRef.current;
+            const north = Math.max(start.lat, e.latlng.lat);
+            const south = Math.min(start.lat, e.latlng.lat);
+            const east = Math.max(start.lng, e.latlng.lng);
+            const west = Math.min(start.lng, e.latlng.lng);
+
+            const newBounds = { north, south, east, west };
+            setFieldBounds(newBounds);
+            const center = { lat: (north + south) / 2, lng: (east + west) / 2 };
+            setPinnedCoords(center);
+            setDrawStartLatLng(null);
+            setIsDrawingNewBox(false);
+
+            const area = calculateFieldAcreage(newBounds);
+            toast.success(`Farm field block defined! Area: ${area.acres} Acres (${area.hectares} Ha)`, { icon: '📐' });
+          }
+        } else {
+          // Direct click shifts field block center to the clicked coordinate
+          if (fieldBoundsRef.current) {
+            const currentCenterLat = (fieldBoundsRef.current.north + fieldBoundsRef.current.south) / 2;
+            const currentCenterLng = (fieldBoundsRef.current.east + fieldBoundsRef.current.west) / 2;
+            const deltaLat = e.latlng.lat - currentCenterLat;
+            const deltaLng = e.latlng.lng - currentCenterLng;
+            setFieldBounds({
+              north: fieldBoundsRef.current.north + deltaLat,
+              south: fieldBoundsRef.current.south + deltaLat,
+              east: fieldBoundsRef.current.east + deltaLng,
+              west: fieldBoundsRef.current.west + deltaLng,
+            });
+          }
+          const newCoords = { lat: e.latlng.lat, lng: e.latlng.lng };
+          setPinnedCoords(newCoords);
+          toast('Farm centroid moved to: ' + newCoords.lat.toFixed(5) + '°, ' + newCoords.lng.toFixed(5) + '°', {
+            icon: '📍',
+            duration: 2000
+          });
+        }
       });
     }
+
+    // Attach ResizeObserver to eliminate map blanking when container layout shifts
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    });
+    resizeObserver.observe(mapContainerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, []);
 
-  // 4. Update Map Center & Overlays when Telemetry, Layer Mode, or Pinning changes
+  // Multi-pass size invalidation to guarantee zero blanking
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const timers = [
+      setTimeout(() => mapInstanceRef.current?.invalidateSize(), 50),
+      setTimeout(() => mapInstanceRef.current?.invalidateSize(), 150),
+      setTimeout(() => mapInstanceRef.current?.invalidateSize(), 300),
+      setTimeout(() => mapInstanceRef.current?.invalidateSize(), 600),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [isPinMode, isDrawingNewBox, layerMode]);
+
+  // 4. Update Map Center, Overlays, Field Block Rectangle & Handles
   useEffect(() => {
     const map = mapInstanceRef.current;
     const layerGroup = gridLayerGroupRef.current;
     if (!map || !layerGroup || !ndviData) return;
 
+    // Ensure map tiles stay calibrated
+    map.invalidateSize();
+
     const currentLat = pinnedCoords ? pinnedCoords.lat : ndviData.centerLat;
     const currentLng = pinnedCoords ? pinnedCoords.lng : ndviData.centerLng;
     const center: L.LatLngExpression = [currentLat, currentLng];
 
-    // Smoothly fly camera if farm changed
+    // Smoothly fly camera when farm changed in normal viewing mode
     if (!isPinMode) {
       map.flyTo(center, 16, { duration: 1.2 });
     }
 
     // Clear previous overlays
     layerGroup.clearLayers();
+
+    // Custom Corner Marker Icon for dragging field vertices
+    const createCornerIcon = () => L.divIcon({
+      className: styles.cornerMarker,
+      html: `<div style="width: 14px; height: 14px; background: #10B981; border: 2.5px solid #FFFFFF; border-radius: 50%; box-shadow: 0 0 6px rgba(0,0,0,0.6); cursor: move;"></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+    });
+
+    // Render Farm Field Bounding Block
+    if (fieldBounds) {
+      const fieldRect = L.rectangle([[fieldBounds.south, fieldBounds.west], [fieldBounds.north, fieldBounds.east]], {
+        color: isPinMode ? '#10B981' : '#22C55E',
+        weight: isPinMode ? 3 : 2,
+        dashArray: isPinMode ? '6, 6' : undefined,
+        fillColor: '#10B981',
+        fillOpacity: isPinMode ? 0.08 : 0.03,
+      }).addTo(layerGroup);
+
+      const fieldArea = calculateFieldAcreage(fieldBounds);
+      fieldRect.bindTooltip(
+        `<strong>🌾 ${ndviData.farmName}</strong><br/>Field Area: ${fieldArea.acres} Acres (${fieldArea.hectares} Ha)`,
+        { permanent: false, direction: 'top', opacity: 0.9 }
+      );
+
+      // In Pin/Edit mode: Render draggable Corner Handles
+      if (isPinMode) {
+        // NW Handle
+        const handleNW = L.marker([fieldBounds.north, fieldBounds.west], {
+          draggable: true,
+          icon: createCornerIcon(),
+        }).addTo(layerGroup);
+        handleNW.on('drag', (e: L.LeafletEvent) => {
+          const pos = (e.target as L.Marker).getLatLng();
+          setFieldBounds(prev => prev ? { ...prev, north: pos.lat, west: pos.lng } : null);
+        });
+
+        // NE Handle
+        const handleNE = L.marker([fieldBounds.north, fieldBounds.east], {
+          draggable: true,
+          icon: createCornerIcon(),
+        }).addTo(layerGroup);
+        handleNE.on('drag', (e: L.LeafletEvent) => {
+          const pos = (e.target as L.Marker).getLatLng();
+          setFieldBounds(prev => prev ? { ...prev, north: pos.lat, east: pos.lng } : null);
+        });
+
+        // SE Handle
+        const handleSE = L.marker([fieldBounds.south, fieldBounds.east], {
+          draggable: true,
+          icon: createCornerIcon(),
+        }).addTo(layerGroup);
+        handleSE.on('drag', (e: L.LeafletEvent) => {
+          const pos = (e.target as L.Marker).getLatLng();
+          setFieldBounds(prev => prev ? { ...prev, south: pos.lat, east: pos.lng } : null);
+        });
+
+        // SW Handle
+        const handleSW = L.marker([fieldBounds.south, fieldBounds.west], {
+          draggable: true,
+          icon: createCornerIcon(),
+        }).addTo(layerGroup);
+        handleSW.on('drag', (e: L.LeafletEvent) => {
+          const pos = (e.target as L.Marker).getLatLng();
+          setFieldBounds(prev => prev ? { ...prev, south: pos.lat, west: pos.lng } : null);
+        });
+      }
+    }
 
     // Center Farm Marker Pin
     const marker = L.marker(center, {
@@ -208,15 +382,27 @@ export default function SatellitePage() {
 
     if (isPinMode) {
       marker.bindPopup(`
-        <div style="font-family: sans-serif; min-width: 180px; color: #0f172a; padding: 4px;">
-          <h4 style="margin: 0 0 4px 0; color: #107850; font-size: 14px;">📍 Adjusting Farm Location</h4>
-          <p style="margin: 0 0 6px 0; font-size: 12px; color: #475569;">Drag this pin or click on your field to position your exact farm boundaries.</p>
+        <div style="font-family: sans-serif; min-width: 190px; color: #0f172a; padding: 4px;">
+          <h4 style="margin: 0 0 4px 0; color: #107850; font-size: 14px;">📍 Farm Field Centroid</h4>
+          <p style="margin: 0 0 6px 0; font-size: 12px; color: #475569;">Drag this center pin to shift your field, or drag the 4 corner handles to shape your exact field boundary.</p>
           <div style="font-size: 11px; font-weight: 700; color: #16a34a;">Lat: ${currentLat.toFixed(5)}, Lng: ${currentLng.toFixed(5)}</div>
         </div>
       `).openPopup();
 
       marker.on('dragend', () => {
         const pos = marker.getLatLng();
+        if (fieldBounds) {
+          const currentCenterLat = (fieldBounds.north + fieldBounds.south) / 2;
+          const currentCenterLng = (fieldBounds.east + fieldBounds.west) / 2;
+          const deltaLat = pos.lat - currentCenterLat;
+          const deltaLng = pos.lng - currentCenterLng;
+          setFieldBounds({
+            north: fieldBounds.north + deltaLat,
+            south: fieldBounds.south + deltaLat,
+            east: fieldBounds.east + deltaLng,
+            west: fieldBounds.west + deltaLng,
+          });
+        }
         setPinnedCoords({ lat: pos.lat, lng: pos.lng });
       });
     } else {
@@ -233,29 +419,32 @@ export default function SatellitePage() {
     // If Optical mode is selected, only show pure satellite imagery
     if (layerMode === 'optical') return;
 
-    // Shift 4x4 Grid Cells dynamically if pinned coordinates changed
-    const deltaLat = currentLat - ndviData.centerLat;
-    const deltaLng = currentLng - ndviData.centerLng;
-
-    // Render 4x4 Grid Cells with False-Color Styling
-    if (ndviData.gridCells && ndviData.gridCells.length > 0) {
-      ndviData.gridCells.forEach(cell => {
+    // Render 4x4 Grid Cells dynamically fitted inside fieldBounds
+    if (ndviData.gridCells && ndviData.gridCells.length > 0 && fieldBounds) {
+      ndviData.gridCells.forEach((cell, idx) => {
         let fillColor = cell.color;
 
         if (layerMode === 'ndwi') {
-          // NDWI Moisture Palette: Blue-to-Brown
           fillColor = cell.ndwi >= 0.50 ? '#0284C7' : (cell.ndwi >= 0.35 ? '#06B6D4' : '#F59E0B');
         } else if (layerMode === 'grid') {
-          // Grid wireframe
           fillColor = 'transparent';
         }
 
-        const shiftedBounds: L.LatLngBoundsExpression = [
-          [cell.bounds[0][0] + deltaLat, cell.bounds[0][1] + deltaLng],
-          [cell.bounds[1][0] + deltaLat, cell.bounds[1][1] + deltaLng]
+        // Subdivide fieldBounds into 4x4 matrix
+        const row = Math.floor(idx / 4); // 0 to 3
+        const col = idx % 4; // 0 to 3
+
+        const cellNorth = fieldBounds.north - ((fieldBounds.north - fieldBounds.south) * row) / 4;
+        const cellSouth = fieldBounds.north - ((fieldBounds.north - fieldBounds.south) * (row + 1)) / 4;
+        const cellWest = fieldBounds.west + ((fieldBounds.east - fieldBounds.west) * col) / 4;
+        const cellEast = fieldBounds.west + ((fieldBounds.east - fieldBounds.west) * (col + 1)) / 4;
+
+        const cellBounds: L.LatLngBoundsExpression = [
+          [cellSouth, cellWest],
+          [cellNorth, cellEast]
         ];
 
-        const rect = L.rectangle(shiftedBounds, {
+        const rect = L.rectangle(cellBounds, {
           color: layerMode === 'grid' ? '#38BDF8' : '#0F172A',
           weight: layerMode === 'grid' ? 1.5 : 0.8,
           fillColor: fillColor,
@@ -275,19 +464,25 @@ export default function SatellitePage() {
         rect.addTo(layerGroup);
       });
     }
-  }, [ndviData, layerMode, overlayOpacity, isPinMode, pinnedCoords]);
+  }, [ndviData, layerMode, overlayOpacity, isPinMode, pinnedCoords, fieldBounds, isDrawingNewBox]);
 
-  // Handle Saving Updated Farm Coordinates
+  // Handle Saving Updated Farm Coordinates & Field Boundaries
   const handleSaveFarmLocation = async () => {
-    if (!selectedFarmId || !pinnedCoords) return;
+    if (!selectedFarmId) return;
+    const finalLat = pinnedCoords?.lat || (fieldBounds ? (fieldBounds.north + fieldBounds.south) / 2 : ndviData?.centerLat);
+    const finalLng = pinnedCoords?.lng || (fieldBounds ? (fieldBounds.east + fieldBounds.west) / 2 : ndviData?.centerLng);
+    if (!finalLat || !finalLng) return;
+
     setIsSavingCoords(true);
     const toastId = toast.loading('Saving exact farm coordinates and recalibrating Sentinel-2 telemetry...');
     try {
-      const updated = await satelliteService.updateCoordinates(selectedFarmId, pinnedCoords.lat, pinnedCoords.lng);
+      const updated = await satelliteService.updateCoordinates(selectedFarmId, finalLat, finalLng);
       setNdviData(updated);
       setPinnedCoords({ lat: updated.centerLat, lng: updated.centerLng });
       setIsPinMode(false);
-      toast.success('Exact farm location saved! Multispectral satellite telemetry is now calibrated to your field.', { id: toastId });
+      setIsDrawingNewBox(false);
+      setDrawStartLatLng(null);
+      toast.success('Farm field block & centroid saved! Multispectral satellite telemetry calibrated.', { id: toastId });
     } catch {
       toast.error('Failed to save farm coordinates. Please check connection.', { id: toastId });
     } finally {
@@ -298,8 +493,20 @@ export default function SatellitePage() {
   const handleCancelPinMode = () => {
     if (ndviData) {
       setPinnedCoords({ lat: ndviData.centerLat, lng: ndviData.centerLng });
+      if (ndviData.gridCells?.length > 0) {
+        const lats = ndviData.gridCells.flatMap(c => [c.bounds[0][0], c.bounds[1][0]]);
+        const lngs = ndviData.gridCells.flatMap(c => [c.bounds[0][1], c.bounds[1][1]]);
+        setFieldBounds({
+          north: Math.max(...lats),
+          south: Math.min(...lats),
+          east: Math.max(...lngs),
+          west: Math.min(...lngs),
+        });
+      }
     }
     setIsPinMode(false);
+    setIsDrawingNewBox(false);
+    setDrawStartLatLng(null);
   };
 
   // Handle Sentinel-2 Rescan Trigger
@@ -383,7 +590,7 @@ export default function SatellitePage() {
               leftIcon={<MdEditLocation />}
               onClick={() => setIsPinMode(!isPinMode)}
             >
-              {isPinMode ? 'Pinning Field...' : 'Pin Exact Farm Plot'}
+              {isPinMode ? 'Field Boundary Editor Active' : 'Select & Draw Field Block'}
             </Button>
 
             <Button
@@ -408,7 +615,7 @@ export default function SatellitePage() {
         }
       />
 
-      {/* Pin Exact Farm Area Floating Guidance Banner */}
+      {/* Pin & Draw Exact Farm Area Floating Guidance Banner */}
       {isPinMode && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -416,14 +623,37 @@ export default function SatellitePage() {
           className={styles.pinBanner}
         >
           <div className={styles.pinBannerText}>
-            <strong>📍 Select & Pin Exact Farm Area:</strong> Click anywhere on the satellite image or drag the blue pin onto your exact agricultural cropland. The 4×4 multispectral grid will instantly align with your field boundaries so only your farm is monitored.
-            {pinnedCoords && (
-              <span style={{ display: 'block', fontSize: 12, color: 'var(--color-emerald)', marginTop: 4, fontWeight: 700 }}>
-                Selected Plot: {pinnedCoords.lat.toFixed(5)}° N, {pinnedCoords.lng.toFixed(5)}° E
-              </span>
+            <strong>📐 Select & Draw Exact Farm Field Block:</strong>
+            {' '}Drag the 4 corner handles to shape your field block, drag the center pin to reposition, or click <strong>"Draw New Block"</strong> to draw a box directly over your farmland.
+            {fieldBounds && (
+              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 6, fontSize: 12, fontWeight: 700 }}>
+                <span style={{ color: 'var(--color-emerald)' }}>
+                  📐 Field Area: {calculateFieldAcreage(fieldBounds).acres} Acres ({calculateFieldAcreage(fieldBounds).hectares} Hectares)
+                </span>
+                <span style={{ color: '#38BDF8' }}>
+                  📍 Centroid: {((fieldBounds.north + fieldBounds.south) / 2).toFixed(5)}° N, {((fieldBounds.east + fieldBounds.west) / 2).toFixed(5)}° E
+                </span>
+                {isDrawingNewBox && (
+                  <span style={{ color: '#F59E0B' }}>
+                    ✏️ Click two points on the map to set opposite corners
+                  </span>
+                )}
+              </div>
             )}
           </div>
           <div className={styles.pinBannerActions}>
+            <Button
+              size="sm"
+              variant={isDrawingNewBox ? 'primary' : 'outline'}
+              onClick={() => {
+                const nextState = !isDrawingNewBox;
+                setIsDrawingNewBox(nextState);
+                setDrawStartLatLng(null);
+                toast(nextState ? 'Click on the map to set Corner 1 of your field block' : 'Exited box drawing mode', { icon: '✏️' });
+              }}
+            >
+              {isDrawingNewBox ? 'Cancel Drawing' : '✏️ Draw New Block'}
+            </Button>
             <Button
               size="sm"
               variant="outline"

@@ -35,6 +35,15 @@
   cursor: crosshair !important;
 }
 
+.cornerMarker {
+  cursor: move !important;
+  transition: transform 0.15s ease;
+}
+
+.cornerMarker:hover {
+  transform: scale(1.3);
+}
+
 .mapCard {
   position: relative;
   overflow: hidden;

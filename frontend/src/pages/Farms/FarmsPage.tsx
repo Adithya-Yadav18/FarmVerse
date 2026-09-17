@@ -22,9 +22,11 @@ import api from '../../services/api';
 export default function FarmsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isAgronomist = user?.role === 'Agronomist';
-  const isAdmin = user?.role === 'Admin';
-  const canManageFarms = !isAgronomist || isAdmin;
+  const rawRole = (user?.role || 'Farmer').replace('ROLE_', '').toLowerCase();
+  const isAgronomist = rawRole.includes('agronomist');
+  const isNormalUser = rawRole.includes('normal') || rawRole === 'user';
+  const isAdmin = rawRole.includes('admin');
+  const canManageFarms = (!isAgronomist && !isNormalUser) || isAdmin;
 
   const [farms, setFarms] = useState<Farm[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,11 +197,20 @@ export default function FarmsPage() {
             </Button>
           ) : (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.12)', color: 'var(--color-primary, #3B82F6)', padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
-              <MdSecurity size={16} /> Agronomist Inspection View
+              <MdSecurity size={16} /> Agronomist Audit Mode (Read-Only)
             </div>
           )
         }
       />
+
+      {!canManageFarms && (
+        <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, marginTop: 16 }}>
+          <MdSecurity size={20} color="#3B82F6" />
+          <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+            <strong>🔍 Agronomist Audit & Advisory Mode (Read-Only):</strong> You can inspect farm soil chemistry, crops, and acreage records. Adding, editing, or deleting farm plots is restricted to registered farm owners.
+          </div>
+        </div>
+      )}
 
       <SearchFilter
         searchValue={search}
