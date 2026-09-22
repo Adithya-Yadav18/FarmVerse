@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card/Card';
 import { Button } from '../../components/ui/Button/Button';
 import { useTheme } from '../../context/ThemeContext';
 import settingsService from '../../services/settingsService';
+import { ChangePasswordModal } from './components/ChangePasswordModal';
 
 interface ToggleProps { checked: boolean; onChange: (v: boolean) => void; }
 function Toggle({ checked, onChange }: ToggleProps) {
@@ -45,6 +46,7 @@ export default function SettingsPage() {
   const [privacy, setPrivacy] = useState({ twoFactor: false, activityLog: true });
   const [language, setLanguage] = useState('English (India)');
   const [saving, setSaving] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -158,20 +160,46 @@ export default function SettingsPage() {
         {/* Security */}
         <Card>
           <SectionHeader icon={<MdSecurity />} title="Security" />
-          {([
-            ['twoFactor', 'Two-Factor Authentication', 'Add an extra layer of security to your account'],
-            ['activityLog', 'Activity Log', 'Keep track of all account activity'],
-          ] as [keyof typeof privacy, string, string][]).map(([key, label, desc]) => (
-            <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border-light)' }}>
-              <div>
-                <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{label}</p>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{desc}</p>
+          {/* Two-Factor Authentication */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid var(--border-light)' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, margin: 0 }}>Two-Factor Authentication (MFA)</p>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 12,
+                    background: privacy.twoFactor ? 'rgba(16, 185, 129, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                    color: privacy.twoFactor ? '#10b981' : 'var(--text-muted)',
+                  }}
+                >
+                  {privacy.twoFactor ? 'ACTIVE' : 'DISABLED'}
+                </span>
               </div>
-              <Toggle checked={privacy[key]} onChange={v => setPrivacy(p => ({ ...p, [key]: v }))} />
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, marginBottom: 0 }}>
+                {privacy.twoFactor
+                  ? 'High Security: A 6-digit verification code (OTP) will be required each time you sign in.'
+                  : 'Add an extra layer of security. Requires a 6-digit verification code on sign in.'}
+              </p>
             </div>
-          ))}
+            <Toggle checked={privacy.twoFactor} onChange={v => setPrivacy(p => ({ ...p, twoFactor: v }))} />
+          </div>
+
+          {/* Activity Log */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid var(--border-light)' }}>
+            <div>
+              <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, margin: 0 }}>Activity Log</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, marginBottom: 0 }}>Keep track of all account logins and activities</p>
+            </div>
+            <Toggle checked={privacy.activityLog} onChange={v => setPrivacy(p => ({ ...p, activityLog: v }))} />
+          </div>
+
           <div style={{ marginTop: 16 }}>
-            <Button variant="outline" size="sm">Change Password</Button>
+            <Button variant="outline" size="sm" onClick={() => setShowPasswordModal(true)}>
+              Change Password
+            </Button>
           </div>
         </Card>
 
@@ -179,6 +207,11 @@ export default function SettingsPage() {
           {saving ? 'Saving to Database...' : 'Save All Settings'}
         </Button>
       </div>
+
+      <ChangePasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+      />
     </div>
   );
 }

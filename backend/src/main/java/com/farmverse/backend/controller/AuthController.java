@@ -70,8 +70,32 @@ public class AuthController {
             @RequestBody java.util.Map<String, String> payload,
             java.security.Principal principal) {
         String email = principal != null ? principal.getName() : null;
+        if (email == null || "anonymousUser".equalsIgnoreCase(email)) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !"anonymousUser".equalsIgnoreCase(auth.getName())) {
+                email = auth.getName();
+            }
+        }
+        if (email == null && payload.containsKey("email")) {
+            email = payload.get("email");
+        }
         String currentPassword = payload.get("currentPassword");
         String newPassword = payload.get("newPassword");
         return ResponseEntity.ok(authService.changePassword(email, currentPassword, newPassword));
+    }
+
+    // POST /api/auth/verify-mfa
+    @PostMapping("/verify-mfa")
+    public ResponseEntity<AuthResponse> verifyMfa(@RequestBody java.util.Map<String, String> payload) {
+        String email = payload.get("email");
+        String otp = payload.get("otp");
+        return ResponseEntity.ok(authService.verifyMfa(email, otp));
+    }
+
+    // POST /api/auth/resend-mfa
+    @PostMapping("/resend-mfa")
+    public ResponseEntity<AuthResponse> resendMfa(@RequestBody java.util.Map<String, String> payload) {
+        String email = payload.get("email");
+        return ResponseEntity.ok(authService.resendMfa(email));
     }
 }

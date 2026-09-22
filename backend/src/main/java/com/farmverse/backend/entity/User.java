@@ -34,6 +34,10 @@ public class User {
     
     private String resetToken;
     private LocalDateTime resetTokenExpiry;
+
+    @JsonIgnore
+    private String mfaCode;
+    private LocalDateTime mfaCodeExpiry;
     
     private LocalDateTime createdAt;
 }

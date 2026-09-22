@@ -6,8 +6,10 @@ import com.farmverse.backend.dto.ProfileUpdateRequest;
 import com.farmverse.backend.dto.RegisterRequest;
 import com.farmverse.backend.entity.Farmer;
 import com.farmverse.backend.entity.User;
+import com.farmverse.backend.entity.UserSettings;
 import com.farmverse.backend.repository.FarmerRepository;
 import com.farmverse.backend.repository.UserRepository;
+import com.farmverse.backend.repository.UserSettingsRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -25,17 +27,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final UserSettingsRepository userSettingsRepository;
 
     public AuthService(UserRepository userRepository,
                        FarmerRepository farmerRepository,
                        PasswordEncoder passwordEncoder,
                        AuthenticationManager authenticationManager,
-                       JwtService jwtService) {
+                       JwtService jwtService,
+                       UserSettingsRepository userSettingsRepository) {
         this.userRepository = userRepository;
         this.farmerRepository = farmerRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.userSettingsRepository = userSettingsRepository;
     }
 
     public AuthResponse registerFarmer(RegisterRequest request) {
@@ -122,6 +127,22 @@ public class AuthService {
 
         // Lookup Farmer profile conditionally (never crash on non-farmer roles)
         Farmer loggedInFarmer = farmerRepository.findByUser(loggedInUser).orElse(null);
+
+        // Check if Two-Factor Authentication (MFA) is enabled for this user
+        UserSettings settings = userSettingsRepository.findByUser(loggedInUser).orElse(null);
+        if (settings != null && settings.isTwoFactorAuth()) {
+            String otp = String.format("%06d", new java.security.SecureRandom().nextInt(1000000));
+            loggedInUser.setMfaCode(otp);
+            loggedInUser.setMfaCodeExpiry(LocalDateTime.now().plusMinutes(10));
+            userRepository.save(loggedInUser);
+
+            AuthResponse mfaResponse = new AuthResponse();
+            mfaResponse.setMfaRequired(true);
+            mfaResponse.setEmail(loggedInUser.getEmail());
+            mfaResponse.setOtpCode(otp); // Provided for test demo helper
+            mfaResponse.setMessage("Two-Factor Authentication required. A 6-digit verification code has been issued.");
+            return mfaResponse;
+        }
 
         String jwtToken = jwtService.generateToken(loggedInUser.getEmail());
 
@@ -284,6 +305,66 @@ public class AuthService {
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         response.put("success", true);
         response.put("message", "Password changed successfully.");
+        return response;
+    }
+
+    public AuthResponse verifyMfa(String email, String otp) {
+        if (email == null || otp == null || email.isBlank() || otp.isBlank()) {
+            throw new IllegalArgumentException("Email and verification code are required.");
+        }
+
+        String normalizedEmail = email.trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User account not found"));
+
+        if (user.getMfaCode() == null || user.getMfaCodeExpiry() == null) {
+            throw new IllegalArgumentException("No pending verification code found. Please sign in again.");
+        }
+
+        if (LocalDateTime.now().isAfter(user.getMfaCodeExpiry())) {
+            user.setMfaCode(null);
+            user.setMfaCodeExpiry(null);
+            userRepository.save(user);
+            throw new IllegalArgumentException("Verification code has expired. Please request a new code.");
+        }
+
+        if (!user.getMfaCode().trim().equals(otp.trim())) {
+            throw new IllegalArgumentException("Invalid verification code. Please check and try again.");
+        }
+
+        // Code matches successfully! Clear pending MFA code
+        user.setMfaCode(null);
+        user.setMfaCodeExpiry(null);
+        userRepository.save(user);
+
+        Farmer farmer = farmerRepository.findByUser(user).orElse(null);
+        String jwtToken = jwtService.generateToken(user.getEmail());
+
+        AuthResponse response = new AuthResponse();
+        response.getTokens().setAccessToken(jwtToken);
+        populateUserResponse(response.getUser(), user, farmer);
+        return response;
+    }
+
+    public AuthResponse resendMfa(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email is required.");
+        }
+
+        String normalizedEmail = email.trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User account not found"));
+
+        String otp = String.format("%06d", new java.security.SecureRandom().nextInt(1000000));
+        user.setMfaCode(otp);
+        user.setMfaCodeExpiry(LocalDateTime.now().plusMinutes(10));
+        userRepository.save(user);
+
+        AuthResponse response = new AuthResponse();
+        response.setMfaRequired(true);
+        response.setEmail(user.getEmail());
+        response.setOtpCode(otp);
+        response.setMessage("A new 6-digit verification code has been issued.");
         return response;
     }
 }

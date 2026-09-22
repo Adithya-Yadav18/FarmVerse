@@ -5,6 +5,11 @@ import lombok.Data;
 
 @Data
 public class AuthResponse {
+    private boolean mfaRequired = false;
+    private String email;
+    private String otpCode;
+    private String message;
+
     private Tokens tokens = new Tokens();
     private UserResponse user = new UserResponse();
 

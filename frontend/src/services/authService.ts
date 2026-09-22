@@ -1,12 +1,29 @@
 import api from './api';
 import type { LoginCredentials, RegisterData, User, AuthTokens } from '../types';
 
-interface LoginResponse { user: User; tokens: AuthTokens; }
+export interface LoginResponse {
+  user: User;
+  tokens: AuthTokens;
+  mfaRequired?: boolean;
+  email?: string;
+  otpCode?: string;
+  message?: string;
+}
 interface RegisterResponse { user: User; tokens: AuthTokens; }
 
 export const authService = {
   login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
     const { data } = await api.post<LoginResponse>('/auth/login', credentials);
+    return data;
+  },
+
+  verifyMfa: async (payload: { email: string; otp: string }): Promise<LoginResponse> => {
+    const { data } = await api.post<LoginResponse>('/auth/verify-mfa', payload);
+    return data;
+  },
+
+  resendMfa: async (payload: { email: string }): Promise<LoginResponse> => {
+    const { data } = await api.post<LoginResponse>('/auth/resend-mfa', payload);
     return data;
   },
 
@@ -35,8 +52,15 @@ export const authService = {
     return data.data;
   },
 
-  changePassword: async (payload: { currentPassword: string; newPassword: string }): Promise<void> => {
-    await api.put('/auth/change-password', payload);
+  changePassword: async (payload: { currentPassword: string; newPassword: string; email?: string }): Promise<void> => {
+    let email = payload.email;
+    if (!email) {
+      try {
+        const raw = localStorage.getItem('farmverse_user');
+        if (raw) email = JSON.parse(raw).email;
+      } catch {}
+    }
+    await api.put('/auth/change-password', { ...payload, email });
   },
 
   forgotPassword: async (email: string): Promise<{ success: boolean; email: string; resetToken?: string; message: string }> => {
